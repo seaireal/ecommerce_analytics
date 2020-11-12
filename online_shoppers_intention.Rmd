@@ -1,0 +1,17 @@
+---
+title: "Understanding online shoppers' purchasing intention"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+df = read_csv("online_shoppers_intention.csv")
+```
+
+```{r}
+
+```
