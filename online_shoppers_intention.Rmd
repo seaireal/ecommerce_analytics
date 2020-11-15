@@ -8,8 +8,82 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
+# data preparation
+## load data
+
 ```{r}
 df = read_csv("online_shoppers_intention.csv")
+# unbalanced: less site visits converted to purchases
+table(df$Revenue)
+```
+
+## under sampling
+
+```{r}
+set.seed(1)
+df_0 = df[df$Revenue == FALSE, ]
+df_1 = df[df$Revenue == TRUE, ]
+df_0_sub = df_0[sample(1:nrow(df_0), nrow(df_1)), ]
+
+split_size = as.integer(nrow(df_1)/2)
+train_index = sample(1:nrow(df_1), split_size)
+
+df_0_train = df_0_sub[train_index, ]
+df_0_test = df_0_sub[-train_index, ]
+df_1_train = df_1[train_index, ]
+df_1_test = df_1[-train_index, ]
+
+df_train = rbind(df_0_train, df_1_train)
+df_test = rbind(df_0_test, df_1_test)
+
+table(df_train$Revenue)
+table(df_test$Revenue)
+```
+
+
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
 ```
 
 ```{r}
