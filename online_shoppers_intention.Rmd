@@ -42,9 +42,9 @@ table(df_test$Revenue)
 ```
 
 
-## graphical lasso
+## graphical lasso --- feature selection
 ```{r}
-S=cov(df[, !sapply(df, is.character)]) # for columns not character
+S=cov(df[, !sapply(df, is.character)]) # for columns not character (-Month,-VisitorType)
 dim(S)
 
 fit1=glasso(S,rho=50)
