@@ -39,7 +39,55 @@ df_test = rbind(df_0_test, df_1_test)
 table(df_train$Revenue)
 table(df_test$Revenue)
 ```
+```{r}
+Accuracy = function(model){
+  
+predicted.train = predict(model, df_train)
+predicted.test = predict(model, df_test)
 
+training_accuracy = sum(predicted.train == df_train$Revenue)/length(df_train$Revenue)
+
+test_accuracy = sum(predicted.test == df_test$Revenue)/length(df_test$Revenue)
+
+both_accuracy = c(training_accuracy, test_accuracy)
+
+return(both_accuracy)
+}
+```
+
+```{r}
+library(e1071)
+
+df_train$Revenue = as.factor(df_train$Revenue)
+
+df_train$Weekend = as.factor(df_train$Weekend)
+
+df_train$Month = as.factor(df_train$Month)
+
+df_train$VisitorType = as.factor(df_train$VisitorType)
+```
+
+```{r}
+set.seed(3)
+tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
+
+Accuracy(tune_svm1$best.model)
+```
+
+
+```{r}
+set.seed(3)
+tune_svm2 = tune(svm, Revenue~., data = df_train, kernel = "polynomial", ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
+
+Accuracy(tune_svm2$best.model)
+```
+
+```{r}
+set.seed(3)
+tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = list(cost = c(0.01, 0.1, 1, 10, 100),  gamma = c(0.1, 0.5, 1, 2,3,4,5)))
+
+Accuracy(tune_svm3$best.model)
+```
 
 
 ```{r}
