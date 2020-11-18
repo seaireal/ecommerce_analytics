@@ -9,6 +9,8 @@ library(tidyverse)
 library(glmnet) # logistic, ridge, and lasso
 library(MASS) # lda, qda, stepaic
 library(pROC) # ROC AUC plot
+library(e1071)
+library(DMwR) ## Loading DMwr to balance the unbalanced class
 ```
 
 # data preparation
@@ -46,7 +48,72 @@ table(df_test$Revenue)
 
 # logistic regression
 ## full model
+## Apply SVM method
+```{r}
+# Define a function which can provide the accuracy of the model for both training set and test set
 
+Accuracy = function(model){
+  
+predicted.train = predict(model, df_train)
+predicted.test = predict(model, df_test)
+
+training_accuracy = sum(predicted.train == df_train$Revenue)/length(df_train$Revenue)
+
+test_accuracy = sum(predicted.test == df_test$Revenue)/length(df_test$Revenue)
+
+both_accuracy = c(training_accuracy, test_accuracy)
+
+return(both_accuracy)
+}
+```
+
+```{r}
+# Change all columns with character type to factor type. Or SVM cross-validation can't work.
+df_train$Revenue = as.factor(df_train$Revenue)
+
+df_train$Weekend = as.factor(df_train$Weekend)
+
+df_train$Month = as.factor(df_train$Month)
+
+df_train$VisitorType = as.factor(df_train$VisitorType)
+
+df_test$Revenue = as.factor(df_test$Revenue)
+
+df_test$Weekend = as.factor(df_test$Weekend)
+
+df_test$Month = as.factor(df_test$Month)
+
+df_test$VisitorType = as.factor(df_test$VisitorType)
+```
+
+```{r}
+# linear kernel SVM
+set.seed(3)
+tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
+
+Accuracy(tune_svm1$best.model)
+```
+
+
+```{r}
+# polynomial kernel SVM
+set.seed(3)
+tune_svm2 = tune(svm, Revenue~., data = df_train, kernel = "polynomial", ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
+
+Accuracy(tune_svm2$best.model)
+```
+
+```{r}
+# radial kernel SVM
+set.seed(3)
+tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = list(cost = c(0.01, 0.1, 1, 10, 100),  gamma = c(0.1, 0.5, 1, 2,3,4,5)))
+
+Accuracy(tune_svm3$best.model)
+```
+# Based on the above three SVM models, the linear kernel SVM provides the highest test accuracy of 82.9%
+
+
+## graphical lasso --- feature selection
 ```{r}
 lgmod_full = glm(Revenue ~ ., df_train, family="binomial")
 lgmod_full_pred <- predict(lgmod_full, df_test, type="response")
@@ -96,6 +163,107 @@ X_train_l = model.matrix(Revenue~., df_train)[ ,-1] # remove intercept
 Y_train_l = df_train$Revenue
 X_test_l = model.matrix(Revenue~., df_test)[ ,-1] # remove intercept
 Y_test_l = df_test$Revenue
+S=cov(df[, !sapply(df, is.character)]) # for columns not character (-Month,-VisitorType)
+dim(S)
+
+fit1=glasso(S,rho=50)
+Theta=fit1$wi
+colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+Adj=Theta!=0
+Adj=Adj*1
+diag(Adj)=0
+plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
+
+fit2=glasso(S,rho=20)
+Theta=fit2$wi
+colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+Adj=Theta!=0
+Adj=Adj*1
+diag(Adj)=0
+plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
+
+fit3=glasso(S,rho=5)
+Theta=fit3$wi
+colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+Adj=Theta!=0
+Adj=Adj*1
+diag(Adj)=0
+plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
+
+fit4=glasso(S,rho=1)
+Theta=fit4$wi
+colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+Adj=Theta!=0
+Adj=Adj*1
+diag(Adj)=0
+plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
+
+fit5=glasso(S,rho=100)
+Theta=fit5$wi
+colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+Adj=Theta!=0
+Adj=Adj*1
+diag(Adj)=0
+plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
+```
+
+
+## Regular sampling
+```{r}
+set.seed(1)
+df_0 = df[df$Revenue == FALSE, ]
+df_1 = df[df$Revenue == TRUE, ]
+
+
+split_size = as.integer(nrow(df_1)/5)
+t_index = sample(1:nrow(df_1), split_size)
+df_1_train = df_1[-t_index, ]
+df_1_test = df_1[t_index, ]
+
+split_size = as.integer(nrow(df_0)/5)
+f_index = sample(1:nrow(df_0), split_size)
+df_0_train = df_0[-f_index, ]
+df_0_test = df_0[f_index, ]
+
+df_train = rbind(df_0_train, df_1_train)
+df_test = rbind(df_0_test, df_1_test)
+
+table(df_train$Revenue)
+table(df_test$Revenue)
+```
+
+```{r}
+# linear kernel SVM
+set.seed(3)
+tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
+
+Accuracy(tune_svm1$best.model)
+
+# polynomial kernel SVM
+tune_svm2 = tune(svm, Revenue~., data = df_train, kernel = "polynomial", ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
+
+Accuracy(tune_svm2$best.model)
+
+# radial kernel SVM
+tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = list(cost = c(0.01, 0.1, 1, 10, 100),  gamma = c(0.1, 0.5, 1, 2,3,4,5)))
+
+Accuracy(tune_svm3$best.model)
+```
+
+[1] 0.8839331 0.8904665
+[1] 0.9268120 0.8957404
+[1] 0.9140395 0.9002028
+
+## SMOTE, synthetic data generation
+```{r}
+balanced.data <- SMOTE(Revenue ~., df, perc.over = 8000,perc.under=100)
+
+as.data.frame(table(balanced.data$Revenue))
 ```
 
 ```{r}
