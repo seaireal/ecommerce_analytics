@@ -6,7 +6,8 @@ output: word_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-library(faraway)
+library(e1071)
+library(DMwR) ## Loading DMwr to balance the unbalanced class
 ```
 
 # data preparation
@@ -61,8 +62,6 @@ return(both_accuracy)
 ```
 
 ```{r}
-library(e1071)
-
 # Change all columns with character type to factor type. Or SVM cross-validation can't work.
 df_train$Revenue = as.factor(df_train$Revenue)
 
@@ -71,6 +70,14 @@ df_train$Weekend = as.factor(df_train$Weekend)
 df_train$Month = as.factor(df_train$Month)
 
 df_train$VisitorType = as.factor(df_train$VisitorType)
+
+df_test$Revenue = as.factor(df_test$Revenue)
+
+df_test$Weekend = as.factor(df_test$Weekend)
+
+df_test$Month = as.factor(df_test$Month)
+
+df_test$VisitorType = as.factor(df_test$VisitorType)
 ```
 
 ```{r}
@@ -155,8 +162,11 @@ plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
 
 ```
 
+## SMOTE, synthetic data generation
 ```{r}
+balanced.data <- SMOTE(Revenue ~., df, perc.over = 8000, k = 5)
 
+as.data.frame(table(balanced.data$Revenue))
 ```
 
 ```{r}
