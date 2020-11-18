@@ -201,6 +201,10 @@ tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = li
 Accuracy(tune_svm3$best.model)
 ```
 
+[1] 0.8839331 0.8904665
+[1] 0.9268120 0.8957404
+[1] 0.9140395 0.9002028
+
 ## SMOTE, synthetic data generation
 ```{r}
 balanced.data <- SMOTE(Revenue ~., df, perc.over = 8000,perc.under=100)
