@@ -6,6 +6,9 @@ output: word_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(glmnet) # logistic, ridge, and lasso
+library(MASS) # lda, qda, stepaic
+library(pROC) # ROC AUC plot
 ```
 
 # data preparation
@@ -20,6 +23,7 @@ table(df$Revenue)
 ## under sampling
 
 ```{r}
+# https://topepo.github.io/caret/subsampling-for-class-imbalances.html
 set.seed(1)
 df_0 = df[df$Revenue == FALSE, ]
 df_1 = df[df$Revenue == TRUE, ]
@@ -40,22 +44,76 @@ table(df_train$Revenue)
 table(df_test$Revenue)
 ```
 
-
+# logistic regression
+## full model
 
 ```{r}
+lgmod_full = glm(Revenue ~ ., df_train, family="binomial")
+lgmod_full_pred <- predict(lgmod_full, df_test, type="response")
+lgmod_full_revenue <- ifelse(lgmod_full_pred > 0.5, TRUE, FALSE)
+test_revenue = df_test$Revenue
+print("confusion matrix")
+table(lgmod_full_revenue, test_revenue)
+print("test error")
+mean(lgmod_full_revenue != test_revenue)
+print("sensitivity")
+sum(lgmod_full_revenue==1 & test_revenue==1)/sum(test_revenue==1)
+print("specificity")
+sum(lgmod_full_revenue==0 & test_revenue==0)/sum(test_revenue==0)
 
+#auc
+#roc(test_revenue, lgmod_full_revenue, levels = c(0, 1), direction = "<") %>% auc()
+```
+
+## stepwise selection
+
+```{r}
+lgmod_aic = stepAIC(lgmod_full, direction="backward", trace=FALSE)
+
+colnames(df)
+coef(lgmod_aic)
+length(coef(lgmod_aic))
+
+lgmod_aic_pred <- predict(lgmod_aic, df_test, type="response")
+lgmod_aic_revenue <- ifelse(lgmod_aic_pred > 0.5, TRUE, FALSE)
+test_revenue = df_test$Revenue
+
+print("confusion matrix")
+table(lgmod_aic_revenue, test_revenue)
+print("test error")
+mean(lgmod_aic_revenue != test_revenue)
+print("sensitivity")
+sum(lgmod_aic_revenue==1 & test_revenue==1)/sum(test_revenue==1)
+print("specificity")
+sum(lgmod_aic_revenue==0 & test_revenue==0)/sum(test_revenue==0)
+```
+
+## Lasso regularized
+
+```{r}
+# create model matrix
+X_train_l = model.matrix(Revenue~., df_train)[ ,-1] # remove intercept
+Y_train_l = df_train$Revenue
+X_test_l = model.matrix(Revenue~., df_test)[ ,-1] # remove intercept
+Y_test_l = df_test$Revenue
 ```
 
 ```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
+set.seed(1)
+lgmod_lasso_cv = cv.glmnet(X_train_l, Y_train_l, alpha = 1, family = "binomial")
+lgmod_lasso = glmnet(X_train_l, Y_train_l, alpha = 1, family = "binomial", lambda = lgmod_lasso_cv$lambda.min)
+coef(lgmod_lasso)
+lgmod_lasso_pred = predict(lgmod_lasso, s=lgmod_lasso_cv$lambda.min, newx=X_test_l, type="response")
+lgmod_lasso_revenue <- ifelse(lgmod_lasso_pred > 0.5, TRUE, FALSE)
+test_revenue = df_test$Revenue
+print("confusion matrix")
+table(lgmod_lasso_revenue, test_revenue)
+print("test error")
+mean(lgmod_lasso_revenue != test_revenue)
+print("sensitivity")
+sum(lgmod_lasso_revenue==1 & test_revenue==1)/sum(test_revenue==1)
+print("specificity")
+sum(lgmod_lasso_revenue==0 & test_revenue==0)/sum(test_revenue==0)
 ```
 
 ```{r}
