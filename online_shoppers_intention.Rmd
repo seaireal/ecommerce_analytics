@@ -30,10 +30,21 @@ df = mutate(df,
             OperatingSystems = as.factor(OperatingSystems),
             Browser = as.factor(Browser),
             Region = as.factor(Region),
-            TrafficType = as.factor(TrafficType),
+            # combine levels with individual occurances less than 100
+            TrafficType = case_when(TrafficType == 7 ~ 0,
+                                    TrafficType == 9 ~ 0,
+                                    TrafficType == 12 ~ 0,
+                                    TrafficType == 14 ~ 0,
+                                    TrafficType == 15 ~ 0,
+                                    TrafficType == 16 ~ 0,
+                                    TrafficType == 17 ~ 0,
+                                    TrafficType == 18 ~ 0,
+                                    TrafficType == 19 ~ 0,
+                                    TRUE ~ TrafficType) %>% as.factor(),
             VisitorType = as.factor(VisitorType),
             Weekend = as.factor(Weekend),
-            Revenue = as.factor(Revenue))
+            Revenue = case_when(Revenue == TRUE ~ 1,
+                                Revenue == FALSE ~ 0) %>% as.factor())
 ```
 
 ## under sampling
@@ -41,8 +52,8 @@ df = mutate(df,
 ```{r}
 # https://topepo.github.io/caret/subsampling-for-class-imbalances.html
 set.seed(1)
-df_0 = df[df$Revenue == FALSE, ]
-df_1 = df[df$Revenue == TRUE, ]
+df_0 = df[df$Revenue == 0, ]
+df_1 = df[df$Revenue == 1, ]
 df_0_sub = df_0[sample(1:nrow(df_0), nrow(df_1)), ]
 
 split_size = as.integer(nrow(df_1)/2)
@@ -63,8 +74,8 @@ table(df_test$Revenue)
 ## regular sampling
 ```{r}
 set.seed(1)
-df_0 = df[df$Revenue == FALSE, ]
-df_1 = df[df$Revenue == TRUE, ]
+df_0 = df[df$Revenue == 0, ]
+df_1 = df[df$Revenue == 1, ]
 
 
 split_size = as.integer(nrow(df_1)/5)
@@ -97,7 +108,7 @@ as.data.frame(table(balanced.data$Revenue))
 ```{r}
 lgmod_full = glm(Revenue ~ ., df_train, family="binomial")
 lgmod_full_pred <- predict(lgmod_full, df_test, type="response")
-lgmod_full_revenue <- ifelse(lgmod_full_pred > 0.5, TRUE, FALSE)
+lgmod_full_revenue <- ifelse(lgmod_full_pred > 0.5, 1, 0)
 test_revenue = df_test$Revenue
 print("confusion matrix")
 table(lgmod_full_revenue, test_revenue)
@@ -114,7 +125,7 @@ sum(lgmod_full_revenue==0 & test_revenue==0)/sum(test_revenue==0)
 
 ## stepwise selection
 
-```{r}
+```{r warning=F}
 lgmod_aic = stepAIC(lgmod_full, direction="backward", trace=FALSE)
 
 colnames(df)
@@ -122,7 +133,7 @@ coef(lgmod_aic)
 length(coef(lgmod_aic))
 
 lgmod_aic_pred <- predict(lgmod_aic, df_test, type="response")
-lgmod_aic_revenue <- ifelse(lgmod_aic_pred > 0.5, TRUE, FALSE)
+lgmod_aic_revenue <- ifelse(lgmod_aic_pred > 0.5, 1, 0)
 test_revenue = df_test$Revenue
 
 print("confusion matrix")
@@ -149,9 +160,9 @@ Y_test_l = df_test$Revenue
 set.seed(1)
 lgmod_lasso_cv = cv.glmnet(X_train_l, Y_train_l, alpha = 1, family = "binomial")
 lgmod_lasso = glmnet(X_train_l, Y_train_l, alpha = 1, family = "binomial", lambda = lgmod_lasso_cv$lambda.min)
-coef(lgmod_lasso)
+#coef(lgmod_lasso)
 lgmod_lasso_pred = predict(lgmod_lasso, s=lgmod_lasso_cv$lambda.min, newx=X_test_l, type="response")
-lgmod_lasso_revenue <- ifelse(lgmod_lasso_pred > 0.5, TRUE, FALSE)
+lgmod_lasso_revenue <- ifelse(lgmod_lasso_pred > 0.5, 1, 0)
 test_revenue = df_test$Revenue
 print("confusion matrix")
 table(lgmod_lasso_revenue, test_revenue)
