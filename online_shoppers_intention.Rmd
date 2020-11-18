@@ -11,19 +11,23 @@ library(MASS) # lda, qda, stepaic
 library(pROC) # ROC AUC plot
 library(e1071) # svm
 library(DMwR) ## sample unbalanced class
+library(gbm) # boosting
+library(tree)
+library(randomForest)
 ```
 
-# data preparation
-## load data
+# Data preparation
+## Load data
 
 ```{r}
 df = read_csv("online_shoppers_intention.csv")
 # unbalanced: less site visits converted to purchases
 table(df$Revenue)
 ```
+## Formatting
 
 ```{r}
-# change all categorical features to factor type, or SVM cross-validation can't work.
+# convert categorical features to factor type, or SVM cross-validation can't work.
 
 df = mutate(df, 
             Month = as.factor(Month),
@@ -47,7 +51,7 @@ df = mutate(df,
                                 Revenue == FALSE ~ 0) %>% as.factor())
 ```
 
-## under sampling
+## Under sampling
 
 ```{r}
 # https://topepo.github.io/caret/subsampling-for-class-imbalances.html
@@ -71,7 +75,8 @@ table(df_train$Revenue)
 table(df_test$Revenue)
 ```
 
-## regular sampling
+## Regular sampling
+
 ```{r}
 set.seed(1)
 df_0 = df[df$Revenue == 0, ]
@@ -95,17 +100,17 @@ table(df_train$Revenue)
 table(df_test$Revenue)
 ```
 
-## SMOTE, synthetic data generation
+## SMOTE: synthetic data generation
 ```{r}
 balanced.data <- SMOTE(Revenue ~., df, perc.over = 8000,perc.under=100)
 
 as.data.frame(table(balanced.data$Revenue))
 ```
 
-# logistic regression
-## full model
+# Logistic regression
+## Full model
 
-```{r}
+```{r warning=F}
 lgmod_full = glm(Revenue ~ ., df_train, family="binomial")
 lgmod_full_pred <- predict(lgmod_full, df_test, type="response")
 lgmod_full_revenue <- ifelse(lgmod_full_pred > 0.5, 1, 0)
@@ -120,10 +125,10 @@ print("specificity")
 sum(lgmod_full_revenue==0 & test_revenue==0)/sum(test_revenue==0)
 
 #auc
-#roc(test_revenue, lgmod_full_revenue, levels = c(0, 1), direction = "<") %>% auc()
+roc(test_revenue, lgmod_full_revenue, levels = c(0, 1), direction = "<") %>% auc()
 ```
 
-## stepwise selection
+## Stepwise selection
 
 ```{r warning=F}
 lgmod_aic = stepAIC(lgmod_full, direction="backward", trace=FALSE)
@@ -144,6 +149,9 @@ print("sensitivity")
 sum(lgmod_aic_revenue==1 & test_revenue==1)/sum(test_revenue==1)
 print("specificity")
 sum(lgmod_aic_revenue==0 & test_revenue==0)/sum(test_revenue==0)
+
+#auc
+roc(test_revenue, lgmod_aic_pred, levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 ## Lasso regularized
@@ -172,6 +180,9 @@ print("sensitivity")
 sum(lgmod_lasso_revenue==1 & test_revenue==1)/sum(test_revenue==1)
 print("specificity")
 sum(lgmod_lasso_revenue==0 & test_revenue==0)/sum(test_revenue==0)
+
+#auc
+roc(test_revenue, lgmod_lasso_pred[,1], levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 # SVM
@@ -240,7 +251,7 @@ tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = li
 Accuracy(tune_svm3$best.model)
 ```
 
-## graphical lasso - feature selection
+# Graphical lasso: feature selection
 
 ```{r}
 S=cov(df[, !sapply(df, is.character)]) # for columns not character (-Month,-VisitorType)
@@ -290,6 +301,141 @@ Adj=Theta!=0
 Adj=Adj*1
 diag(Adj)=0
 plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
+```
+
+# Trees
+## Decision Trees
+
+```{r}
+set.seed(1)
+trmod = tree(Revenue~., df_train)
+summary(trmod)
+```
+
+```{r}
+trmod_revenue = predict(trmod, df_test, type="class")
+print("confusion matrix")
+table(trmod_revenue, test_revenue)
+print("test error rate")
+mean(trmod_revenue!=test_revenue)
+print("sensitivity")
+sum(trmod_revenue==1 & test_revenue==1)/sum(test_revenue==1)
+print("specificity")
+sum(trmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
+
+# auc
+trmod_pred = predict(trmod, df_test, type="vector")
+roc(test_revenue, trmod_pred[,2], levels = c(0, 1), direction = "<") %>% auc()
+```
+
+```{r}
+plot(trmod)
+text(trmod, pretty=0)
+```
+
+```{r}
+set.seed(1)
+trmod_cv = cv.tree(trmod)
+trmod_cv
+```
+
+## Random forest
+
+```{r}
+rfmod = randomForest(Revenue ~ ., data=df_train, importance=TRUE)
+```
+
+```{r}
+rfmod_revenue = predict(rfmod, newdata=df_test, type="response")
+print("confusion table")
+table(rfmod_revenue, test_revenue)
+print("test error rate")
+mean(rfmod_revenue!=test_revenue)
+print("sensitivity")
+sum(rfmod_revenue==1 & test_revenue==1)/sum(test_revenue==1)
+print("specificity")
+sum(rfmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
+
+# auc
+rfmod_pred=predict(rfmod, newdata=df_test, type="prob")
+roc(test_revenue,rfmod_pred[,2], levels = c(0, 1), direction = "<") %>% auc()
+```
+
+```{r fig.height=8, fig.width=10}
+rfmod_imp = importance(rfmod, type=1) %>% as.data.frame()
+rfmod_imp = cbind(predictor = rownames(rfmod_imp), rfmod_imp)
+rownames(rfmod_imp) = 1:nrow(rfmod_imp)
+rfmod_imp = arrange(rfmod_imp, desc(MeanDecreaseAccuracy))
+rfmod_impgg = ggplot(rfmod_imp, aes(reorder(predictor, MeanDecreaseAccuracy), MeanDecreaseAccuracy, fill=MeanDecreaseAccuracy)) + 
+                              geom_col() + xlab(NULL) + ylab("mean decrease in accuracy") + coord_flip() +
+                              scale_fill_continuous(name=NULL) + theme_classic() +
+                              theme(text=element_text(size=18), legend.position=c(0.9, 0.2))
+rfmod_impgg
+#ggsave("rfmod_impgg.jpeg", width=10, height=8, units="in", dpi=300)
+```
+
+```{r}
+varImpPlot(rfmod)
+```
+
+# Boosting
+
+```{r}
+df_train_b = mutate(df_train, Revenue=as.numeric(levels(Revenue))[Revenue])
+df_test_b = mutate(df_test, Revenue=as.numeric(levels(Revenue))[Revenue])
+set.seed(1)
+bmod = gbm(Revenue~., df_train_b, distribution="bernoulli", n.trees=5000, interaction.depth=4)
+```
+
+
+```{r fig.height=8, fig.width=10}
+bmod_imp = summary(bmod)
+bmod_imp = bmod_imp %>% rename("predictor"="var", "rel_inf" = "rel.inf")
+bmod_impgg = ggplot(bmod_imp, aes(reorder(predictor, rel_inf), rel_inf, fill=rel_inf)) + 
+                              geom_col() + xlab(NULL) + ylab("relative influence") + coord_flip() +
+                              scale_fill_continuous(name=NULL) + theme_classic() +
+                              theme(text=element_text(size=18), legend.position=c(0.9, 0.2))
+bmod_impgg
+#ggsave("bmod_impgg.jpeg", width=10, height=8, units="in", dpi=300)
+```
+
+```{r}
+bmod_pred = predict(bmod, newdata=df_test_b, n.trees=5000, type="response")
+bmod_revenue = ifelse(bmod_pred > 0.5, 1, 0)
+print("confusion table")
+table(bmod_revenue, test_revenue)
+print("test error rate")
+mean(bmod_revenue!=test_revenue)
+print("sensitivity")
+sum(bmod_revenue==1 & test_revenue==1)/sum(test_revenue==1)
+print("specificity")
+sum(bmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
+# auc
+roc(test_revenue, bmod_pred, levels = c(0, 1), direction = "<") %>% auc()
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
 ```
 
 ```{r}
