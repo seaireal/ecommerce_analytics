@@ -451,9 +451,6 @@ df_test_c <- cbind(df_test_c[,-c(which(colnames(df_test_c) %in% ohe_feats))],df_
 #lapply(df_test_c,class)
 
 set.seed(1)
-#bmod = gbm(Revenue~., df_train_b, distribution="bernoulli", n.trees=5000, interaction.depth=4)
-
-#bstDense <- xgboost(data = as.matrix(train$data), label = train$label, max.depth = 2, eta = 1, nthread = 2, nrounds = 2, objective = "binary:logistic")
 bst <- xgboost(data = data.matrix(df_train_c[ ,-16]), label = df_train_c$Revenue, max.depth = 15, eta = 1, nthread = 10, nrounds = 25, objective = "binary:logistic", verbose = 2)
 pred <- predict(bst, data.matrix(df_test_c[ ,-16]))
 err <- mean(as.numeric(pred > 0.5) != df_test_c$Revenue)
