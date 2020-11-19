@@ -12,6 +12,7 @@ library(pROC) # ROC AUC plot
 library(e1071) # svm
 library(DMwR) ## sample unbalanced class
 library(gbm) # boosting
+library(xgboost) # XGBoost
 library(tree)
 library(randomForest)
 library(glasso)
@@ -417,9 +418,15 @@ sum(bmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
 # auc
 roc(test_revenue, bmod_pred, levels = c(0, 1), direction = "<") %>% auc()
 ```
-
+# XGboost
 ```{r}
+df_train_b = mutate(df_train, Revenue=as.numeric(levels(Revenue))[Revenue])
+df_test_b = mutate(df_test, Revenue=as.numeric(levels(Revenue))[Revenue])
+set.seed(1)
+bmod = gbm(Revenue~., df_train_b, distribution="bernoulli", n.trees=5000, interaction.depth=4)
 
+bstDense <- xgboost(data = as.matrix(train$data), label = train$label, max.depth = 2, eta = 1, nthread = 2, nrounds = 2, objective = "binary:logistic")
+bst <- xgboost(data = dtrain, max.depth = 2, eta = 1, nthread = 2, nrounds = 2, objective = "binary:logistic", verbose = 2)
 ```
 
 ```{r}
