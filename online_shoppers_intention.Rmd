@@ -263,8 +263,8 @@ dim(S)
 
 fit1=glasso(S,rho=50)
 Theta=fit1$wi
-colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
-rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
+rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
 Adj=Theta!=0
 Adj=Adj*1
 diag(Adj)=0
@@ -272,8 +272,8 @@ plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
 
 fit2=glasso(S,rho=20)
 Theta=fit2$wi
-colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
-rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
+rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
 Adj=Theta!=0
 Adj=Adj*1
 diag(Adj)=0
@@ -281,8 +281,8 @@ plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
 
 fit3=glasso(S,rho=5)
 Theta=fit3$wi
-colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
-rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
+rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
 Adj=Theta!=0
 Adj=Adj*1
 diag(Adj)=0
@@ -290,8 +290,8 @@ plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
 
 fit4=glasso(S,rho=1)
 Theta=fit4$wi
-colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
-rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
+rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
 Adj=Theta!=0
 Adj=Adj*1
 diag(Adj)=0
@@ -299,8 +299,8 @@ plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
 
 fit5=glasso(S,rho=100)
 Theta=fit5$wi
-colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
-rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay","OperatingSystems","Browser","Region","TrafficType","Weekend","Revenue")
+colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
+rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
 Adj=Theta!=0
 Adj=Adj*1
 diag(Adj)=0
