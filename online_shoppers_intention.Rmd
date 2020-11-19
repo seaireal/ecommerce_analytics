@@ -421,7 +421,6 @@ roc(test_revenue, bmod_pred, levels = c(0, 1), direction = "<") %>% auc()
 ```
 # XGboost
 ```{r}
-
 # convert features to numeric type, or XGBoost can't work.
 
 df_train_c = mutate(df_train, 
