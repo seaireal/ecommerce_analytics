@@ -10,7 +10,7 @@ library(glmnet) # logistic, ridge, and lasso
 library(MASS) # lda, qda, stepaic
 library(pROC) # ROC AUC plot
 library(e1071) # svm
-library(DMwR) ## sample unbalanced class
+library(DMwR) # sample unbalanced class
 library(gbm) # boosting
 library(xgboost) # XGBoost
 library(tree)
@@ -352,7 +352,7 @@ rfmod = randomForest(Revenue ~ ., data=df_train, importance=TRUE)
 
 ```{r}
 rfmod_revenue = predict(rfmod, newdata=df_test, type="response")
-print("confusion table")
+print("confusion matrix")
 table(rfmod_revenue, test_revenue)
 print("test error rate")
 mean(rfmod_revenue!=test_revenue)
@@ -407,7 +407,7 @@ bmod_impgg
 ```{r}
 bmod_pred = predict(bmod, newdata=df_test_b, n.trees=5000, type="response")
 bmod_revenue = ifelse(bmod_pred > 0.5, 1, 0)
-print("confusion table")
+print("confusion matrix")
 table(bmod_revenue, test_revenue)
 print("test error rate")
 mean(bmod_revenue!=test_revenue)
