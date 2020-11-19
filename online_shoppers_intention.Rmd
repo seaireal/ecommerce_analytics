@@ -14,6 +14,8 @@ library(DMwR) ## sample unbalanced class
 library(gbm) # boosting
 library(tree)
 library(randomForest)
+library(glasso)
+library(igraph) # graph DAG
 ```
 
 # Data preparation
@@ -251,10 +253,12 @@ tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = li
 Accuracy(tune_svm3$best.model)
 ```
 
+Based on the above three SVM models, the radial kernel SVM provides the highest test accuracy of 90.02%
+
 # Graphical lasso: feature selection
 
 ```{r}
-S=cov(df[, !sapply(df, is.character)]) # for columns not character (-Month,-VisitorType)
+S=cov(df[, !sapply(df, is.factor)]) # for columns not character (-Month,-VisitorType)
 dim(S)
 
 fit1=glasso(S,rho=50)
