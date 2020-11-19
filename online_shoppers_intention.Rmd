@@ -312,7 +312,7 @@ plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
 
 ```{r}
 set.seed(1)
-trmod = tree(Revenue~., df_train)
+trmod = tree::tree(Revenue~., df_train)
 summary(trmod)
 ```
 
