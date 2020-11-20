@@ -457,7 +457,9 @@ print(paste("test-error=", err))
 ```
 
 ```{r}
-
+up_train <- upSample(x = imbal_train[, -ncol(imbal_train)],
+                     y = imbal_train$Class)                         
+table(up_train$Class) 
 ```
 
 ```{r}
