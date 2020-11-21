@@ -190,10 +190,7 @@ roc(test_revenue, lgmod_lasso_pred[,1], levels = c(0, 1), direction = "<") %>% a
 ```
 
 # SVM
-
 ```{r}
-# Define a function which can provide the accuracy of the model for both training set and test set
-
 Accuracy = function(model){
   
 predicted.train = predict(model, df_train)
@@ -212,35 +209,75 @@ return(both_accuracy)
 ```{r}
 # linear kernel SVM
 set.seed(3)
-tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
+tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = list(cost = c(0.1, 1, 10, 100), probability = TRUE))
 
-Accuracy(tune_svm1$best.model)
+summary(tune_svm1)
+
+predicted = predict(tune_svm1$best.model, df_test, probability = TRUE)
+test_revenue = df_test$Revenue
+
+print("test error")
+mean(predicted != test_revenue)
+
+print("sensitivity")
+sum(predicted==1 & test_revenue==1)/sum(test_revenue==1)
+
+print("specificity")
+sum(predicted==0 & test_revenue==0)/sum(test_revenue==0)
+
+roc(test_revenue, attributes(predicted)$probabilities[,2], levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 
 ```{r}
 # polynomial kernel SVM
 set.seed(3)
-tune_svm2 = tune(svm, Revenue~., data = df_train, kernel = "polynomial", ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
+tune_svm2 = tune(svm, Revenue~., data = df_train, kernel = "polynomial", ranges = list(cost = c(1, 10, 100, 1000), probability = TRUE))
 
-Accuracy(tune_svm2$best.model)
+summary(tune_svm2)
+
+predicted_svm2 = predict(tune_svm2$best.model, df_test, probability = TRUE)
+test_revenue = df_test$Revenue
+
+print("test error")
+mean(predicted_svm2 != test_revenue)
+
+print("sensitivity")
+sum(predicted_svm2==1 & test_revenue==1)/sum(test_revenue==1)
+
+print("specificity")
+sum(predicted_svm2==0 & test_revenue==0)/sum(test_revenue==0)
+
+roc(test_revenue, attributes(predicted_svm2)$probabilities[,2], levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 ```{r}
 # radial kernel SVM
 set.seed(3)
-tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = list(cost = c(0.01, 0.1, 1, 10, 100),  gamma = c(0.1, 0.5, 1, 2,3,4,5)))
+tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = list(cost = c(0.1, 1, 10, 100),  gamma = c(0.001, 0.01, 0.1, 1), probability = TRUE))
 
-Accuracy(tune_svm3$best.model)
+summary(tune_svm3)
+
+predicted_svm3 = predict(tune_svm3$best.model, df_test, probability = TRUE)
+test_revenue = df_test$Revenue
+
+print("test error")
+mean(predicted_svm3 != test_revenue)
+
+print("sensitivity")
+sum(predicted_svm3==1 & test_revenue==1)/sum(test_revenue==1)
+
+print("specificity")
+sum(predicted_svm3==0 & test_revenue==0)/sum(test_revenue==0)
+
+roc(test_revenue, attributes(predicted_svm3)$probabilities[,2], levels = c(0, 1), direction = "<") %>% auc()
 ```
-
-Based on the above three SVM models, the linear kernel SVM provides the highest test accuracy of 82.9%
 
 ```{r}
 # try a different sampling method
 # linear kernel SVM
 set.seed(3)
-tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
+tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = list(cost = c(0.1, 1, 10, 100)))
 
 Accuracy(tune_svm1$best.model)
 
@@ -332,6 +369,7 @@ sum(trmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
 # auc
 trmod_pred = predict(trmod, df_test, type="vector")
 roc(test_revenue, trmod_pred[,2], levels = c(0, 1), direction = "<") %>% auc()
+
 ```
 
 ```{r}
@@ -365,6 +403,7 @@ sum(rfmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
 # auc
 rfmod_pred=predict(rfmod, newdata=df_test, type="prob")
 roc(test_revenue,rfmod_pred[,2], levels = c(0, 1), direction = "<") %>% auc()
+
 ```
 
 ```{r fig.height=8, fig.width=10}
