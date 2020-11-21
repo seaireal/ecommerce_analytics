@@ -213,19 +213,19 @@ tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = li
 
 summary(tune_svm1)
 
-predicted = predict(tune_svm1$best.model, df_test, probability = TRUE)
+predicted_svm1 = predict(tune_svm1$best.model, df_test, probability = TRUE)
 test_revenue = df_test$Revenue
 
 print("test error")
-mean(predicted != test_revenue)
+mean(predicted_svm1 != test_revenue)
 
 print("sensitivity")
-sum(predicted==1 & test_revenue==1)/sum(test_revenue==1)
+sum(predicted_svm1==1 & test_revenue==1)/sum(test_revenue==1)
 
 print("specificity")
-sum(predicted==0 & test_revenue==0)/sum(test_revenue==0)
+sum(predicted_svm1==0 & test_revenue==0)/sum(test_revenue==0)
 
-roc(test_revenue, attributes(predicted)$probabilities[,2], levels = c(0, 1), direction = "<") %>% auc()
+roc(test_revenue, attributes(predicted_svm1)$probabilities[,2], levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 
