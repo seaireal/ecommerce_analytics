@@ -12,12 +12,14 @@ library(pROC) # ROC AUC plot
 library(e1071) # svm
 library(DMwR) # sample unbalanced class
 library(gbm) # boosting
+library(tensorflow) #DNN
+library(kerasR) # DNN
 library(xgboost) # XGBoost
 library(tree)
 library(randomForest)
 library(glasso)
 library(caret) # misc
-library(igraph) # graph DAG
+#library(igraph) # graph DAG
 ```
 
 # Data preparation
