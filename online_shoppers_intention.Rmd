@@ -17,6 +17,7 @@ library(gbm) # boosting
 library(tensorflow) #DNN
 #library(kerasR) # DNN
 library(keras) # DNN
+library(deepnet) # DNN
 library(xgboost) # XGBoost
 library(tree)
 library(randomForest)
@@ -469,14 +470,12 @@ varImpPlot(rfmod)
 ```
 
 # Boosting
-
 ```{r}
 df_train_b = mutate(df_train, Revenue=as.numeric(levels(Revenue))[Revenue])
 df_test_b = mutate(df_test, Revenue=as.numeric(levels(Revenue))[Revenue])
 set.seed(1)
 bmod = gbm(Revenue~., df_train_b, distribution="bernoulli", n.trees=5000, interaction.depth=4)
 ```
-
 
 ```{r fig.height=8, fig.width=10}
 bmod_imp = summary(bmod)
@@ -503,7 +502,8 @@ sum(bmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
 # auc
 roc(test_revenue, bmod_pred, levels = c(0, 1), direction = "<") %>% auc()
 ```
-# XGboost
+
+## XGboost
 ```{r}
 # convert features to numeric type, or XGBoost can't work.
 
@@ -540,9 +540,10 @@ err <- mean(as.numeric(pred > 0.5) != df_test_c$Revenue)
 print(paste("test-error=", err))
 ```
 
-## DNN
+# DNN
+## With Keras
 ```{r}
-# data processing for keras package
+# data processing for deepnet and Keras package
 x_train = as.matrix(df_train[,1:17])
 x_test = as.matrix(df_test[,1:17])
 y_train = as.matrix(df_train[,18])
@@ -555,7 +556,6 @@ y_train <- to_categorical(y_train,2)
 y_test <- to_categorical(y_test,2)
 ```
 
-# With Keras
 ```{r}
 # Initialize a sequential model
 model <- keras_model_sequential() 
@@ -602,8 +602,70 @@ model %>% fit(
 # roc(y_test, attributes(Y_test_hat)$probabilities[,2], levels = c(0, 1), direction = "<") %>% auc()
 ```
 
+## With deepnet: single layer
 ```{r}
+# data processing for deepnet package
+# convert features to numeric type
+df_train_c = mutate(df_train, 
+            OperatingSystems = as.numeric(OperatingSystems),
+            Browser = as.numeric(Browser),
+            Region = as.numeric(Region),
+            TrafficType = as.numeric(TrafficType),
+            Weekend = as.numeric(Weekend),
+            Revenue=as.numeric(levels(Revenue))[Revenue])
+ohe_feats = c('Month', 'VisitorType')
+dummies <- dummyVars(~ Month +  VisitorType, data = df_train_c)
+df_train_c_ohe <- as.data.frame(predict(dummies, newdata = df_train_c))
+df_train_c <- cbind(df_train_c[,-c(which(colnames(df_train_c) %in% ohe_feats))],df_train_c_ohe)
 
+
+df_test_c = mutate(df_test, 
+            OperatingSystems = as.numeric(OperatingSystems),
+            Browser = as.numeric(Browser),
+            Region = as.numeric(Region),
+            TrafficType = as.numeric(TrafficType),
+            Weekend = as.numeric(Weekend),
+            Revenue=as.numeric(levels(Revenue))[Revenue])
+ohe_feats = c('Month', 'VisitorType')
+dummies <- dummyVars(~ Month +  VisitorType, data = df_test_c)
+df_test_c_ohe <- as.data.frame(predict(dummies, newdata = df_test_c))
+df_test_c <- cbind(df_test_c[,-c(which(colnames(df_test_c) %in% ohe_feats))],df_test_c_ohe)
+#lapply(df_test_c,class)
+
+x_train = as.matrix(df_train_c[,-18])
+x_test = as.matrix(df_test_c[,-18])
+y_train = as.matrix(df_train_c[,18])
+y_test = as.matrix(df_test_c[,18])
+
+y_train=as.numeric(y_train)
+y_test=as.numeric(y_test)
+
+```
+
+```{r}
+nn <- nn.train(x_train, y_train, hidden = c(5))
+yy = nn.predict(nn, x_test)
+print(head(yy))
+
+yhat = matrix(0,length(yy),1)
+yhat[which(yy > mean(yy))] = 1
+yhat[which(yy <= mean(yy))] = 0
+table(y_test,yhat)
+
+
+# yhat <- keras_predict_classes(mod, X_test)
+# table(y_test, yhat)
+# 
+print("test error")
+mean(y_test != yhat)
+
+print("sensitivity")
+sum(yhat==1 & y_test==1)/sum(y_test==1)
+
+print("specificity")
+sum(yhat==0 & y_test==0)/sum(y_test==0)
+
+roc(y_test, yhat, levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 ```{r}
