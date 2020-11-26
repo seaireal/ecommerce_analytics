@@ -6,14 +6,17 @@ output: word_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(magrittr)
 library(glmnet) # logistic, ridge, and lasso
 library(MASS) # lda, qda, stepaic
 library(pROC) # ROC AUC plot
 library(e1071) # svm
-library(DMwR) # sample unbalanced class
+library(ROSE) # sample unbalanced class
 library(gbm) # boosting
+#install_tensorflow()
 library(tensorflow) #DNN
-library(kerasR) # DNN
+#library(kerasR) # DNN
+library(keras) # DNN
 library(xgboost) # XGBoost
 library(tree)
 library(randomForest)
@@ -80,9 +83,33 @@ df_test = rbind(df_0_test, df_1_test)
 table(df_train$Revenue)
 table(df_test$Revenue)
 ```
+# up sampling (caret package)
+```{r}
+set.seed(1)
+up_train <- upSample(x = df[, -ncol(df)],
+                     y = df$Revenue) 
+names(up_train)[18]="Revenue"
+table(up_train$Revenue) 
+
+df_0 = up_train[up_train$Revenue == 0, ]
+df_1 = up_train[up_train$Revenue == 1, ]
+
+split_size = as.integer(nrow(df_1)/5)
+train_index = sample(1:nrow(df_1), split_size)
+
+df_0_train = df_0[-train_index, ]
+df_0_test = df_0[train_index, ]
+df_1_train = df_1[-train_index, ]
+df_1_test = df_1[train_index, ]
+
+df_train = rbind(df_0_train, df_1_train)
+df_test = rbind(df_0_test, df_1_test)
+
+table(df_train$Revenue)
+table(df_test$Revenue)
+```
 
 ## Regular sampling
-
 ```{r}
 set.seed(1)
 df_0 = df[df$Revenue == 0, ]
@@ -106,11 +133,27 @@ table(df_train$Revenue)
 table(df_test$Revenue)
 ```
 
-## SMOTE: synthetic data generation
+## ROSE: synthetic data generation
 ```{r}
-balanced.data <- SMOTE(Revenue ~., df, perc.over = 8000,perc.under=100)
+balanced.data <- ROSE(Revenue ~., data=df)$data
+table(balanced.data$Revenue)
 
-as.data.frame(table(balanced.data$Revenue))
+df_0 = balanced.data[balanced.data$Revenue == 0, ]
+df_1 = balanced.data[balanced.data$Revenue == 1, ]
+
+split_size = as.integer(nrow(df_1)/5)
+train_index = sample(1:nrow(df_1), split_size)
+
+df_0_train = df_0[-train_index, ]
+df_0_test = df_0[train_index, ]
+df_1_train = df_1[-train_index, ]
+df_1_test = df_1[train_index, ]
+
+df_train = rbind(df_0_train, df_1_train)
+df_test = rbind(df_0_test, df_1_test)
+
+table(df_train$Revenue)
+table(df_test$Revenue)
 ```
 
 # Logistic regression
@@ -497,18 +540,66 @@ err <- mean(as.numeric(pred > 0.5) != df_test_c$Revenue)
 print(paste("test-error=", err))
 ```
 
+## DNN
 ```{r}
-up_train <- upSample(x = imbal_train[, -ncol(imbal_train)],
-                     y = imbal_train$Class)                         
-table(up_train$Class) 
+# data processing for keras package
+x_train = as.matrix(df_train[,1:17])
+x_test = as.matrix(df_test[,1:17])
+y_train = as.matrix(df_train[,18])
+y_test = as.matrix(df_test[,18])
+
+y_train=as.integer(y_train)
+y_test=as.integer(y_test)
+
+y_train <- to_categorical(y_train,2)
+y_test <- to_categorical(y_test,2)
 ```
 
+# With Keras
 ```{r}
+# Initialize a sequential model
+model <- keras_model_sequential() 
 
-```
+# Add layers to the model
+n_units = 100
+model %>% 
+  layer_dense(units = n_units, 
+              activation = 'relu', 
+              input_shape = dim(x_train)[2]) %>% 
+  layer_dropout(rate = 0.25) %>% 
+  layer_dense(units = n_units, activation = 'relu') %>%
+  layer_dropout(rate = 0.25) %>%
+  layer_dense(units = n_units, activation = 'relu') %>%
+  layer_dropout(rate = 0.25) %>%
+  layer_dense(units = 10, activation = 'softmax')
 
-```{r}
+#complie the model
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics = c('accuracy')
+)
 
+#fit
+model %>% fit(
+  x_train, y_train, 
+  epochs = 5, batch_size = 10, verbose = 1, 
+  validation_split = 0.2
+)
+
+# Y_test_hat <- keras_predict_classes(mod, X_test)
+# table(y_test, Y_test_hat)
+# 
+# print("test error")
+# mean(y_test != Y_test_hat)
+# 
+# print("sensitivity")
+# sum(Y_test_hat==1 & y_test==1)/sum(y_test==1)
+# 
+# print("specificity")
+# sum(Y_test_hat==0 & y_test==0)/sum(y_test==0)
+# 
+# roc(y_test, attributes(Y_test_hat)$probabilities[,2], levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 ```{r}
