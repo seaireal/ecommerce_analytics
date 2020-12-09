@@ -83,6 +83,9 @@ df_test = rbind(df_0_test, df_1_test)
 
 table(df_train$Revenue)
 table(df_test$Revenue)
+
+#write_csv(df_train, "df_train.csv")
+#write_csv(df_test, "df_test.csv")
 ```
 # Oversampling (caret package)
 ```{r}
