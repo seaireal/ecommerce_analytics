@@ -13,7 +13,8 @@ library(pROC) # ROC AUC plot
 library(e1071) # svm
 library(ROSE) # sample unbalanced class
 library(gbm) # boosting
-library(deepnet) # DNN
+library(deepnet) # NN
+library(nnet) # NN
 library(xgboost) # XGBoost
 library(tree)
 library(randomForest)
@@ -149,6 +150,8 @@ df_1_test = df_1[train_index, ]
 df_train = rbind(df_0_train, df_1_train)
 df_test = rbind(df_0_test, df_1_test)
 
+df_train=df_train[!is.na(df_train$Revenue),]
+df_test=df_test[!is.na(df_test$Revenue),]
 table(df_train$Revenue)
 table(df_test$Revenue)
 ```
@@ -530,24 +533,25 @@ df_test_c_ohe <- as.data.frame(predict(dummies, newdata = df_test_c))
 df_test_c <- cbind(df_test_c[,-c(which(colnames(df_test_c) %in% ohe_feats))],df_test_c_ohe)
 #lapply(df_test_c,class)
 
-x_train = as.matrix(df_train_c[,-18])
-x_test = as.matrix(df_test_c[,-18])
-y_train = as.matrix(df_train_c[,18])
-y_test = as.matrix(df_test_c[,18])
+x_train = as.matrix(subset(df_train_c, select = -c(Revenue)))
+x_test = as.matrix(subset(df_test_c, select = -c(Revenue)))
+y_train = as.matrix(df_train_c$Revenue)
+y_test = as.matrix(df_test_c$Revenue)
+
 
 y_train=as.numeric(y_train)
 y_test=as.numeric(y_test)
-
 ```
 
 ```{r}
-nn <- nn.train(x_train, y_train, hidden = c(1, 5, 10), activationfun="sigm", learningrate=0.8, momentum=0.5, learningrate_scale=1, output="sigm", numepochs=3, batchsize=100, hidden_dropout=0, visible_dropout=0)
+nn <- nn.train(x_train, y_train, hidden = c(50), activationfun="sigm", output="sigm")
 yy = nn.predict(nn, x_test)
 print(head(yy))
 
-yhat = matrix(0,length(yy),1)
-yhat[which(yy > mean(yy))] = 1
-yhat[which(yy <= mean(yy))] = 0
+predictions = nn.predict(nn, x_test) 
+error_rate = nn.test(nn, x_test, y_test, t=0.5)
+
+yhat = ifelse(yy > 0.5, 1, 0)
 table(y_test,yhat)
 
 print("test error")
@@ -563,118 +567,20 @@ roc(y_test, yhat, levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 ```{r}
-library(nnet)
-library(e1071)
-###################### create the data
-num.tr=100
-num.te=10000
-X=matrix(rnorm(num.tr*2),ncol=2)
-A=cbind(c(3,3),c(3,-3))
-X.derived=X%*%A
-Y.mean=sigmoid(X.derived[,1])+sigmoid(X.derived[,2])
-Y=Y.mean+sigma.1*rnorm(num.tr)
-model.1.tr=data.frame(Y=Y,X)
-X=matrix(rnorm(num.te*2),ncol=2)
-A=cbind(c(3,3),c(3,-3))
-X.derived=X%*%A
-Y.mean=sigmoid(X.derived[,1])+sigmoid(X.derived[,2])
-Y=Y.mean+sigma.1*rnorm(num.te)
-model.1.te=data.frame(Y=Y,X)
-X=matrix(rnorm(num.tr*10),ncol=10)
-X.derived=dnorm(X)*sqrt(2*pi)
-Y.mean=apply(X.derived,MARGIN=1,FUN=prod)
-Y=Y.mean+sigma.2*rnorm(num.tr)
-model.2.tr=data.frame(Y=Y,X)
-X=matrix(rnorm(num.te*10),ncol=10)
-X.derived=dnorm(X)
-Y.mean=apply(X.derived,MARGIN=1,FUN=prod)
-Y=Y.mean+sigma.2*rnorm(num.te)
-model.2.te=data.frame(Y=Y,X)
-```
 
-Example: Number of hidden units
-```{r}
-model.1.nn=nnet(Y ~ X1 + X2, model.1.tr, size = 3, decay = 5e-4,
-linout = T, skip = F, maxit = 1000, Hess = T)
-sum((predict(model.1.nn,model.1.te)-model.1.te$Y)^2)/num.te/(sigma.1^2)
-error.1=array(0,dim=c(10,10))
-for (i in 1:10){
-for (j in 1:10){
-model.1.nn=nnet(Y ~ X1 + X2, model.1.tr, size = i, decay = 1e-2,
-linout = T, skip = F, maxit = 1000, Hess = T, trace=F)
-error.1[i,j]=sum((predict(model.1.nn,model.1.te)-model.1.te$Y)^2)/num.te/(sigma.1^2)
-}
-}
-error.1.lin=sum((predict(lm(Y ~ X1 + X2, model.1.tr),model.1.te)-model.1.te$Y)^2)
-error.1.lin=error.1.lin/num.te/(sigma.1^2)
-plot(as.factor(c(rep(1:10,10),0)),c(as.vector(error.1),error.1.lin),
-xlab="Number of Hidden Units",ylab="Relative Test Error",main="Sum of Sigmoids")
-error.2=array(0,dim=c(10,10))
-for (i in 1:10){
-for (j in 1:10){
-model.2.nn=nnet(Y ~ X1 + X2 + X3 + X4 + X5 + X6 + X7 + X8 + X9 + X10, model.2.tr,
-size = i, decay = .01, linout = T, skip = F, maxit = 1000, Hess = T, trace=F)
-error.2[i,j]=sum((predict(model.2.nn,model.2.te)-model.2.te$Y)^2)/num.te/(sigma.2^2)
-}
-}
-error.2.lin=sum((predict(lm(Y ~ X1+X2+X3+X4+X5+X6+X7+X8+X9+X10,model.2.tr),
-model.2.te)-model.2.te$Y)^2)
-error.2.lin=error.2.lin/num.te/(sigma.2^2)
-plot(as.factor(c(rep(1:10,10),0)),c(as.vector(error.2),error.2.lin),
-xlab="Number of Hidden Units",ylab="Relative Test Error",main="Radial")
-```
-
-Example: Weight decay
-```{r}
-par(mfrow=c(1,2))
-error.1=array(0,dim=c(10,10))
-for (i in 1:10){
-for (j in 1:10){
-model.1.nn=nnet(Y ~ X1 + X2, model.1.tr, size = i, decay = 0,
-linout = T, skip = F, maxit = 5000, Hess = T, trace=F)
-error.1[i,j]=sum((predict(model.1.nn,model.1.te)-model.1.te$Y)^2)/num.te/(sigma.1^2)
-}
-}
-error.1.lin=sum((predict(lm(Y ~ X1 + X2, model.1.tr),model.1.te)-model.1.te$Y)^2)
-error.1.lin=error.1.lin/num.te/(sigma.1^2)
-plot(as.factor(c(rep(1:10,10),0)),c(as.vector(error.1),error.1.lin),
-xlab="Number of Hidden Units",ylab="Relative Test Error",
-main="No Weight Decay",ylim=c(1,5))
-error.1=array(0,dim=c(10,10))
-for (i in 1:10){
-for (j in 1:10){
-model.1.nn=nnet(Y ~ X1 + X2, model.1.tr, size = i, decay = .1,
-linout = T, skip = F, maxit = 1000, Hess = T, trace=F)
-error.1[i,j]=sum((predict(model.1.nn,model.1.te)-model.1.te$Y)^2)/num.te/(sigma.1^2)
-}
-}
-error.1.lin=sum((predict(lm(Y ~ X1 + X2, model.1.tr),model.1.te)-model.1.te$Y)^2)
-error.1.lin=error.1.lin/num.te/(sigma.1^2)
-plot(as.factor(c(rep(1:10,10),0)),c(as.vector(error.1),error.1.lin),
-xlab="Number of Hidden Units",ylab="Relative Test Error",
-main="Weight Decay = 0.1",ylim=c(1,5))
 ```
 
 ```{r}
-lambda=0:15/100
-error.1=array(0,dim=c(16,10))
-for (i in 1:16){
-for (j in 1:10){
-if (i == 1){
-model.1.nn=nnet(Y ~ X1 + X2, model.1.tr, size = 10, decay = lambda[i],
-linout = T, skip = F, maxit = 5000, Hess = T, trace=F)}
-if (i != 1){
-model.1.nn=nnet(Y ~ X1 + X2, model.1.tr, size = 10, decay = lambda[i],
-linout = T, skip = F, maxit = 2000, Hess = T, trace=F)}
-error.1[i,j]=sum((predict(model.1.nn,model.1.te)-model.1.te$Y)^2)/num.te/(sigma.1^2)
-}
-}
-plot(as.factor(rep(1:16/100,10)),as.vector(error.1),xlab="Weight Decay Parameter",
-ylab="Relative Test Error",main="Sum of Sigmoids, 10 Hidden Units Model",
-labels=lambda,ylim=c(1,3))
-```
-
-```{r}
+Var1 <- c(rnorm(50, 1, 0.5), rnorm(50, -0.6, 0.2))
+Var2 <- c(rnorm(50, -0.8, 0.2), rnorm(50, 2, 1))
+x <- matrix(c(Var1, Var2), nrow = 100, ncol = 2)
+y <- c(rep(1, 50), rep(0, 50))
+nn <- nn.train(x, y, hidden = c(5))
+## predict by nn
+test_Var1 <- c(rnorm(50, 1, 0.5), rnorm(50, -0.6, 0.2))
+test_Var2 <- c(rnorm(50, -0.8, 0.2), rnorm(50, 2, 1))
+test_x <- matrix(c(test_Var1, test_Var2), nrow = 100, ncol = 2)
+yy <- nn.predict(nn, test_x)
 
 ```
 
