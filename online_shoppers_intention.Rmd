@@ -6,21 +6,24 @@ output: word_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-library(magrittr)
+#library(magrittr)
+library(caret) # upsampling
+library(ROSE) # synthetic data generation
 library(glmnet) # logistic, ridge, and lasso
 library(MASS) # lda, qda, stepaic
 library(pROC) # ROC AUC plot
 library(e1071) # svm
-library(ROSE) # sample unbalanced class
-library(gbm) # boosting
-library(deepnet) # NN
-library(nnet) # NN
-library(xgboost) # XGBoost
 library(tree)
+library(gbm) # boosting
+#library(xgboost) # XGBoost
 library(randomForest)
 library(glasso)
-library(caret) # misc
 #library(igraph) # graph DAG
+library(deepnet) # NN
+library(nnet) # NN
+#library(tensorflow)
+#library(keras)
+#library(tfdatasets)
 ```
 
 # Data preparation
@@ -58,7 +61,7 @@ df = mutate(df,
                                 Revenue == FALSE ~ 0) %>% as.factor())
 ```
 
-## Under sampling
+## Undersampling
 
 ```{r}
 # https://topepo.github.io/caret/subsampling-for-class-imbalances.html
@@ -80,8 +83,11 @@ df_test = rbind(df_0_test, df_1_test)
 
 table(df_train$Revenue)
 table(df_test$Revenue)
+
+#write_csv(df_train, "df_train.csv")
+#write_csv(df_test, "df_test.csv")
 ```
-# Over sampling (caret package)
+# Oversampling (caret package)
 ```{r}
 set.seed(1)
 up_train <- upSample(x = df[, -ncol(df)],
@@ -428,6 +434,40 @@ trmod_cv = cv.tree(trmod)
 trmod_cv
 ```
 
+## Gradient boosting
+```{r}
+df_train_b = mutate(df_train, Revenue=as.numeric(levels(Revenue))[Revenue])
+df_test_b = mutate(df_test, Revenue=as.numeric(levels(Revenue))[Revenue])
+set.seed(1)
+bmod = gbm(Revenue~., df_train_b, distribution="bernoulli", n.trees=5000, interaction.depth=4)
+```
+
+```{r fig.height=8, fig.width=10}
+bmod_imp = summary(bmod)
+bmod_imp = bmod_imp %>% rename("predictor"="var", "rel_inf" = "rel.inf")
+bmod_impgg = ggplot(bmod_imp, aes(reorder(predictor, rel_inf), rel_inf, fill=rel_inf)) + 
+                              geom_col() + xlab(NULL) + ylab("relative influence") + coord_flip() +
+                              scale_fill_continuous(name=NULL) + theme_classic() +
+                              theme(text=element_text(size=18), legend.position=c(0.9, 0.2))
+bmod_impgg
+#ggsave("bmod_impgg.jpeg", width=10, height=8, units="in", dpi=300)
+```
+
+```{r}
+bmod_pred = predict(bmod, newdata=df_test_b, n.trees=5000, type="response")
+bmod_revenue = ifelse(bmod_pred > 0.5, 1, 0)
+print("confusion matrix")
+table(bmod_revenue, test_revenue)
+print("test error rate")
+mean(bmod_revenue!=test_revenue)
+print("sensitivity")
+sum(bmod_revenue==1 & test_revenue==1)/sum(test_revenue==1)
+print("specificity")
+sum(bmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
+# auc
+roc(test_revenue, bmod_pred, levels = c(0, 1), direction = "<") %>% auc()
+```
+
 ## Random forest
 
 ```{r}
@@ -466,40 +506,6 @@ rfmod_impgg
 
 ```{r}
 varImpPlot(rfmod)
-```
-
-# Boosting
-```{r}
-df_train_b = mutate(df_train, Revenue=as.numeric(levels(Revenue))[Revenue])
-df_test_b = mutate(df_test, Revenue=as.numeric(levels(Revenue))[Revenue])
-set.seed(1)
-bmod = gbm(Revenue~., df_train_b, distribution="bernoulli", n.trees=5000, interaction.depth=4)
-```
-
-```{r fig.height=8, fig.width=10}
-bmod_imp = summary(bmod)
-bmod_imp = bmod_imp %>% rename("predictor"="var", "rel_inf" = "rel.inf")
-bmod_impgg = ggplot(bmod_imp, aes(reorder(predictor, rel_inf), rel_inf, fill=rel_inf)) + 
-                              geom_col() + xlab(NULL) + ylab("relative influence") + coord_flip() +
-                              scale_fill_continuous(name=NULL) + theme_classic() +
-                              theme(text=element_text(size=18), legend.position=c(0.9, 0.2))
-bmod_impgg
-#ggsave("bmod_impgg.jpeg", width=10, height=8, units="in", dpi=300)
-```
-
-```{r}
-bmod_pred = predict(bmod, newdata=df_test_b, n.trees=5000, type="response")
-bmod_revenue = ifelse(bmod_pred > 0.5, 1, 0)
-print("confusion matrix")
-table(bmod_revenue, test_revenue)
-print("test error rate")
-mean(bmod_revenue!=test_revenue)
-print("sensitivity")
-sum(bmod_revenue==1 & test_revenue==1)/sum(test_revenue==1)
-print("specificity")
-sum(bmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
-# auc
-roc(test_revenue, bmod_pred, levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 # DNN
@@ -544,6 +550,7 @@ y_test=as.numeric(y_test)
 ```
 
 ```{r}
+<<<<<<< HEAD
 # parameter tuning
 lambda=0:15/100
 error.1=array(0,dim=c(16,10))
@@ -570,6 +577,90 @@ for (i in 1:16){
   }
 }
 plot(as.factor(rep(1:16/100,15)),as.vector(error.1),xlab="Weight Decay Parameter",ylab="Relative Test Error",main="Sum of Sigmoids, 10 Hidden Units Model", labels=lambda)
+=======
+nn <- nn.train(x_train, y_train, hidden = c(50), activationfun="sigm", output="sigm")
+yy = nn.predict(nn, x_test)
+print(head(yy))
+
+predictions = nn.predict(nn, x_test) 
+error_rate = nn.test(nn, x_test, y_test, t=0.5)
+
+yhat = ifelse(yy > 0.5, 1, 0)
+table(y_test,yhat)
+
+print("test error")
+mean(y_test != yhat)
+
+print("sensitivity")
+sum(yhat==1 & y_test==1)/sum(y_test==1)
+
+print("specificity")
+sum(yhat==0 & y_test==0)/sum(y_test==0)
+
+roc(y_test, yhat, levels = c(0, 1), direction = "<") %>% auc()
+```
+
+```{r}
+Var1 <- c(rnorm(50, 1, 0.5), rnorm(50, -0.6, 0.2))
+Var2 <- c(rnorm(50, -0.8, 0.2), rnorm(50, 2, 1))
+x <- matrix(c(Var1, Var2), nrow = 100, ncol = 2)
+y <- c(rep(1, 50), rep(0, 50))
+nn <- nn.train(x, y, hidden = c(5))
+## predict by nn
+test_Var1 <- c(rnorm(50, 1, 0.5), rnorm(50, -0.6, 0.2))
+test_Var2 <- c(rnorm(50, -0.8, 0.2), rnorm(50, 2, 1))
+test_x <- matrix(c(test_Var1, test_Var2), nrow = 100, ncol = 2)
+yy <- nn.predict(nn, test_x)
+>>>>>>> e1556af4352482a4b347e251997e9159de7033cb
+
+```
+
+# Feed forward NN using keras
+
+```{r}
+spec <- feature_spec(df_train, Revenue ~ .) %>% 
+  step_numeric_column(all_numeric(), normalizer_fn = scaler_standard()) %>% 
+  step_categorical_column_with_vocabulary_list(all_nominal()) %>% 
+  step_indicator_column(all_nominal())
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
 
 ```
 
