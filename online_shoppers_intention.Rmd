@@ -21,6 +21,9 @@ library(glasso)
 #library(igraph) # graph DAG
 library(deepnet) # NN
 library(nnet) # NN
+#library(tensorflow)
+#library(keras)
+#library(tfdatasets)
 ```
 
 # Data preparation
@@ -58,7 +61,7 @@ df = mutate(df,
                                 Revenue == FALSE ~ 0) %>% as.factor())
 ```
 
-## Under sampling
+## Undersampling
 
 ```{r}
 # https://topepo.github.io/caret/subsampling-for-class-imbalances.html
@@ -81,7 +84,7 @@ df_test = rbind(df_0_test, df_1_test)
 table(df_train$Revenue)
 table(df_test$Revenue)
 ```
-# Over sampling (caret package)
+# Oversampling (caret package)
 ```{r}
 set.seed(1)
 up_train <- upSample(x = df[, -ncol(df)],
@@ -580,8 +583,13 @@ yy <- nn.predict(nn, test_x)
 
 ```
 
-```{r}
+# Feed forward NN using keras
 
+```{r}
+spec <- feature_spec(df_train, Revenue ~ .) %>% 
+  step_numeric_column(all_numeric(), normalizer_fn = scaler_standard()) %>% 
+  step_categorical_column_with_vocabulary_list(all_nominal()) %>% 
+  step_indicator_column(all_nominal())
 ```
 
 ```{r}
