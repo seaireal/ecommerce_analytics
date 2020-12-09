@@ -674,33 +674,6 @@ spec <- feature_spec(df_train, Revenue ~ .) %>%
 ```
 
 ```{r}
-sensitivity=array(0,dim=c(1,10))
-specificity=array(0,dim=c(1,10))
-auc=array(0,dim=c(1,10))
-error.1=array(0,dim=c(1,10))
-for (j in 1:10){
-  model.1.nn=nnet(Revenue ~ ., df_train_c, size = 10, decay = 0.15, linout = T, skip = F, maxit = 5000, Hess = T, trace=F)
-  model.1.pred=predict(model.1.nn,df_test_c)
-      
-  yhat = ifelse(model.1.pred > 0.5, 1, 0)
-  sensitivity[,j]=sum(yhat==1 & df_test_c$Revenue==1)/sum(df_test_c$Revenue==1)
-  specificity[,j]=sum(yhat==0 & df_test_c$Revenue==0)/sum(df_test_c$Revenue==0)
-  auc[,j]=roc(df_test_c$Revenue, yhat, levels = c(0, 1), direction = "<") %>% auc()
-
-  error.1[,j]=mean(df_test_c$Revenue != yhat)
-
-}
-plot(as.factor(rep(0.15,10)),as.vector(error.1),xlab="Weight Decay Parameter",ylab="Relative Test Error",main="Sum of Sigmoids, 10 Hidden Units Model", labels=lambda)
-```
-
-```{r}
-mean(error.1)
-mean(sensitivity)
-mean(specificity)
-mean(auc)
-```
-
-```{r}
 
 ```
 
