@@ -509,7 +509,7 @@ varImpPlot(rfmod)
 ```
 
 # DNN
-## With deepnet: single layer
+## With nnet: single layer
 ```{r}
 # data processing for deepnet package
 # convert features to numeric type
@@ -549,9 +549,8 @@ y_train=as.numeric(y_train)
 y_test=as.numeric(y_test)
 ```
 
+## parameter tuning
 ```{r}
-<<<<<<< HEAD
-# parameter tuning
 lambda=0:15/100
 error.1=array(0,dim=c(16,10))
 for (i in 1:16){
@@ -577,43 +576,53 @@ for (i in 1:16){
   }
 }
 plot(as.factor(rep(1:16/100,15)),as.vector(error.1),xlab="Weight Decay Parameter",ylab="Relative Test Error",main="Sum of Sigmoids, 10 Hidden Units Model", labels=lambda)
-=======
-nn <- nn.train(x_train, y_train, hidden = c(50), activationfun="sigm", output="sigm")
-yy = nn.predict(nn, x_test)
-print(head(yy))
 
-predictions = nn.predict(nn, x_test) 
-error_rate = nn.test(nn, x_test, y_test, t=0.5)
-
-yhat = ifelse(yy > 0.5, 1, 0)
-table(y_test,yhat)
-
-print("test error")
-mean(y_test != yhat)
-
-print("sensitivity")
-sum(yhat==1 & y_test==1)/sum(y_test==1)
-
-print("specificity")
-sum(yhat==0 & y_test==0)/sum(y_test==0)
-
-roc(y_test, yhat, levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 ```{r}
-Var1 <- c(rnorm(50, 1, 0.5), rnorm(50, -0.6, 0.2))
-Var2 <- c(rnorm(50, -0.8, 0.2), rnorm(50, 2, 1))
-x <- matrix(c(Var1, Var2), nrow = 100, ncol = 2)
-y <- c(rep(1, 50), rep(0, 50))
-nn <- nn.train(x, y, hidden = c(5))
-## predict by nn
-test_Var1 <- c(rnorm(50, 1, 0.5), rnorm(50, -0.6, 0.2))
-test_Var2 <- c(rnorm(50, -0.8, 0.2), rnorm(50, 2, 1))
-test_x <- matrix(c(test_Var1, test_Var2), nrow = 100, ncol = 2)
-yy <- nn.predict(nn, test_x)
->>>>>>> e1556af4352482a4b347e251997e9159de7033cb
+sensitivity=array(0,dim=c(1,15))
+specificity=array(0,dim=c(1,15))
+auc=array(0,dim=c(1,15))
+error.1=array(0,dim=c(1,15))
+for (j in 1:15){
+  model.1.nn=nnet(Revenue ~ ., df_train_c, size = 15, decay = 0.01, linout = T, skip = F, maxit = 5000, Hess = T, trace=F)
+  model.1.pred=predict(model.1.nn,df_test_c)
+      
+  yhat = ifelse(model.1.pred > 0.5, 1, 0)
+  sensitivity[,j]=sum(yhat==1 & df_test_c$Revenue==1)/sum(df_test_c$Revenue==1)
+  specificity[,j]=sum(yhat==0 & df_test_c$Revenue==0)/sum(df_test_c$Revenue==0)
+  auc[,j]=roc(df_test_c$Revenue, yhat, levels = c(0, 1), direction = "<") %>% auc()
 
+  error.1[,j]=mean(df_test_c$Revenue != yhat)
+
+}
+plot(as.factor(rep(0.15,15)),as.vector(error.1),xlab="Weight Decay Parameter",ylab="Relative Test Error",main="Sum of Sigmoids, 15 Hidden Units Model", labels=lambda)
 ```
+
+```{r}
+mean(error.1)
+mean(sensitivity)
+mean(specificity)
+mean(auc)
+```
+
+```{r}
+model.1.nn=nnet(Revenue ~ ., df_train_c, size = 15, decay = 0.01, linout = T, skip = F, maxit = 5000, Hess = T, trace=F)
+model.1.pred=predict(model.1.nn,df_test_c)
+      
+yhat = ifelse(model.1.pred > 0.5, 1, 0)
+sensitivity=sum(yhat==1 & df_test_c$Revenue==1)/sum(df_test_c$Revenue==1)
+specificity=sum(yhat==0 & df_test_c$Revenue==0)/sum(df_test_c$Revenue==0)
+auc=roc(df_test_c$Revenue, yhat, levels = c(0, 1), direction = "<") %>% auc()
+
+error.1=mean(df_test_c$Revenue != yhat)
+
+error.1
+sensitivity
+specificity
+auc
+```
+
 
 # Feed forward NN using keras
 
