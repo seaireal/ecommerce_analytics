@@ -7,7 +7,7 @@ output: word_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 #library(magrittr)
-library(caret) # upsampling
+library(caret) # oversampling
 library(ROSE) # synthetic data generation
 library(glmnet) # logistic, ridge, and lasso
 library(MASS) # lda, qda, stepaic
@@ -475,6 +475,7 @@ rfmod = randomForest(Revenue ~ ., data=df_train, importance=TRUE)
 ```
 
 ```{r}
+test_revenue = df_test$Revenue
 rfmod_revenue = predict(rfmod, newdata=df_test, type="response")
 print("confusion matrix")
 table(rfmod_revenue, test_revenue)
@@ -621,16 +622,6 @@ error.1
 sensitivity
 specificity
 auc
-```
-
-
-# Feed forward NN using keras
-
-```{r}
-spec <- feature_spec(df_train, Revenue ~ .) %>% 
-  step_numeric_column(all_numeric(), normalizer_fn = scaler_standard()) %>% 
-  step_categorical_column_with_vocabulary_list(all_nominal()) %>% 
-  step_indicator_column(all_nominal())
 ```
 
 ```{r}
