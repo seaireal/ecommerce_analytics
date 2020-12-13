@@ -61,24 +61,23 @@ df = mutate(df,
                                 Revenue == FALSE ~ 0) %>% as.factor())
 ```
 
-## Undersampling
-
+## Original
 ```{r}
 # https://topepo.github.io/caret/subsampling-for-class-imbalances.html
 set.seed(1)
 df_0 = df[df$Revenue == 0, ]
 df_1 = df[df$Revenue == 1, ]
-idx = sample(1:nrow(df_0), nrow(df_1))
-df_0_sub = df_0[idx, ]
-df_0_re = df_0[-idx, ]
 
-split_size = as.integer(nrow(df_1)/2)
+split_size = as.integer(nrow(df_1)/5)
 train_index = sample(1:nrow(df_1), split_size)
+df_1_train = df_1[-train_index, ]
+df_1_test = df_1[train_index, ]
 
-df_0_train = df_0_sub[train_index, ]
-df_0_test = df_0_sub[-train_index, ]
-df_1_train = df_1[train_index, ]
-df_1_test = df_1[-train_index, ]
+split_size = as.integer(nrow(df_0)/5)
+train_index = sample(1:nrow(df_0), split_size)
+df_0_train = df_0[-train_index, ]
+df_0_test = df_0[train_index, ]
+
 
 df_train = rbind(df_0_train, df_1_train)
 df_test = rbind(df_0_test, df_1_test)
@@ -86,31 +85,42 @@ df_test = rbind(df_0_test, df_1_test)
 table(df_train$Revenue)
 table(df_test$Revenue)
 
+itm = df_train
+table(itm$Revenue)
 #write_csv(df_train, "df_train.csv")
 #write_csv(df_test, "df_test.csv")
 ```
 
-## Regular sampling
+## Under sampling
 ```{r}
-itm = rbind(df_0_train, df_0_re)
-itm = rbind(itm, df_1_train)
-table(itm$Revenue)
-df_train = itm
+set.seed(1)
+df_0 = itm[itm$Revenue == 0, ]
+df_1 = itm[itm$Revenue == 1, ]
+idx = sample(1:nrow(df_0), nrow(df_1))
+df_0_sub = df_0[idx, ]
+df_0_re = df_0[-idx, ]
+
+train_index = sample(1:nrow(df_1), nrow(df_1))
+df_0_train = df_0_sub[train_index, ]
+
+df_train = rbind(df_0_train, df_1)
+
 table(df_train$Revenue)
 table(df_test$Revenue)
 ```
 
-# Oversampling (caret package)
+## Over sampling
 ```{r}
 set.seed(1)
 df_train <- upSample(x = itm[, -ncol(itm)],
                      y = itm$Revenue) 
 names(df_train)[18]="Revenue"
-table(df_train$Revenue) 
+table(df_train$Revenue)
 ```
 
-## ROSE: synthetic data generation
+## ROSE
 ```{r}
+set.seed(1)
 df_train <- ROSE(Revenue ~., data=itm)$data
 table(df_train$Revenue)
 
@@ -596,73 +606,6 @@ auc
 
 ```{r}
 
-```
-
-# Other test set
-```{r}
-set.seed(1)
-df_0 = df[df$Revenue == 0, ]
-df_1 = df[df$Revenue == 1, ]
-
-split_size = as.integer(nrow(df_1)/5)
-train_index = sample(1:nrow(df_1), split_size)
-df_1_train = df_1[-train_index, ]
-df_1_test = df_1[train_index, ]
-
-split_size = as.integer(nrow(df_0)/5)
-train_index = sample(1:nrow(df_0), split_size)
-df_0_train = df_0[-train_index, ]
-df_0_test = df_0[train_index, ]
-
-
-df_train = rbind(df_0_train, df_1_train)
-df_test = rbind(df_0_test, df_1_test)
-
-table(df_train$Revenue)
-table(df_test$Revenue)
-
-itm = df_train
-table(itm$Revenue)
-#write_csv(df_train, "df_train.csv")
-#write_csv(df_test, "df_test.csv")
-```
-
-## Under sampling
-```{r}
-set.seed(1)
-df_0 = itm[itm$Revenue == 0, ]
-df_1 = itm[itm$Revenue == 1, ]
-idx = sample(1:nrow(df_0), nrow(df_1))
-df_0_sub = df_0[idx, ]
-df_0_re = df_0[-idx, ]
-
-train_index = sample(1:nrow(df_1), nrow(df_1))
-df_0_train = df_0_sub[train_index, ]
-
-df_train = rbind(df_0_train, df_1)
-
-table(df_train$Revenue)
-table(df_test$Revenue)
-```
-
-## Over sampling
-```{r}
-set.seed(1)
-df_train <- upSample(x = itm[, -ncol(itm)],
-                     y = itm$Revenue) 
-names(df_train)[18]="Revenue"
-table(df_train$Revenue)
-```
-
-## ROSE
-```{r}
-set.seed(1)
-df_train <- ROSE(Revenue ~., data=itm)$data
-table(df_train$Revenue)
-
-df_train=df_train[!is.na(df_train$Revenue),]
-df_test=df_test[!is.na(df_test$Revenue),]
-table(df_train$Revenue)
 ```
 
 ```{r}
