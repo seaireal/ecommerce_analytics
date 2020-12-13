@@ -535,6 +535,19 @@ for (i in 1:16){
 }
 plot(as.factor(rep(1:16/100,15)),as.vector(error.1),xlab="Weight Decay Parameter",ylab="Relative Test Error",main="Sum of Sigmoids, 10 Hidden Units Model", labels=lambda)
 
+lambda=0:15/100
+error.1=array(0,dim=c(16,20))
+for (i in 1:16){
+  for (j in 1:20){
+    if (i == 1){
+      model.1.nn=nnet(Revenue ~ ., df_train_c, size = 20, decay = lambda[i], linout = T, skip = F, maxit = 5000, Hess = T, trace=F)}
+    if (i != 1){
+      model.1.nn=nnet(Revenue ~ ., df_train_c, size = 20, decay = lambda[i], linout = T, skip = F, maxit = 2000, Hess = T, trace=F)}
+    error.1[i,j]=sum((predict(model.1.nn,df_test_c)-df_test_c$Revenue)^2)/nrow(df_test_c)
+  }
+}
+plot(as.factor(rep(1:16/100,20)),as.vector(error.1),xlab="Weight Decay Parameter",ylab="Relative Test Error",main="Sum of Sigmoids, 10 Hidden Units Model", labels=lambda)
+
 ```
 
 ```{r}
