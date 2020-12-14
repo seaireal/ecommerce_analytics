@@ -7,7 +7,8 @@ output: word_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 #library(magrittr)
-library(caret) # oversampling
+library(caret) # subsampling
+library(DMwR) # SMOTE sampling
 library(ROSE) # synthetic data generation
 library(glmnet) # logistic, ridge, and lasso
 library(MASS) # lda, qda, stepaic
@@ -19,7 +20,7 @@ library(gbm) # boosting
 library(randomForest)
 library(glasso)
 #library(igraph) # graph DAG
-library(deepnet) # NN
+#library(deepnet) # NN
 library(nnet) # NN
 #library(tensorflow)
 #library(keras)
@@ -29,11 +30,12 @@ library(nnet) # NN
 # Data preparation
 ## Load data
 
-```{r}
+```{r message=F}
 df = read_csv("online_shoppers_intention.csv")
 # unbalanced: less site visits converted to purchases
-table(df$Revenue)
+#table(df$Revenue)
 ```
+
 ## Formatting
 
 ```{r}
@@ -61,71 +63,61 @@ df = mutate(df,
                                 Revenue == FALSE ~ 0) %>% as.factor())
 ```
 
-## Original
+## Training and test sets
+
 ```{r}
-# https://topepo.github.io/caret/subsampling-for-class-imbalances.html
+# 1:1 traning and test sets
 set.seed(1)
-df_0 = df[df$Revenue == 0, ]
-df_1 = df[df$Revenue == 1, ]
 
-split_size = as.integer(nrow(df_1)/5)
-train_index = sample(1:nrow(df_1), split_size)
-df_1_train = df_1[-train_index, ]
-df_1_test = df_1[train_index, ]
+split_size = as.integer(nrow(df)/2)
+train_index = sample(1:nrow(df), split_size)
+df_train = df[train_index, ]
+df_test = df[-train_index, ]
 
-split_size = as.integer(nrow(df_0)/5)
-train_index = sample(1:nrow(df_0), split_size)
-df_0_train = df_0[-train_index, ]
-df_0_test = df_0[train_index, ]
+df_train_original = df_train
 
-
-df_train = rbind(df_0_train, df_1_train)
-df_test = rbind(df_0_test, df_1_test)
-
+table(df$Revenue)
+sum(df$Revenue==1)/nrow(df)
 table(df_train$Revenue)
+sum(df_train$Revenue==1)/nrow(df_train)
 table(df_test$Revenue)
+sum(df_test$Revenue==1)/nrow(df_test)
 
-itm = df_train
-table(itm$Revenue)
 #write_csv(df_train, "df_train.csv")
 #write_csv(df_test, "df_test.csv")
 ```
 
-## Under sampling
+## Subsampling on training set
+### Downsampling
+
 ```{r}
+# https://topepo.github.io/caret/subsampling-for-class-imbalances.html
 set.seed(1)
-df_0 = itm[itm$Revenue == 0, ]
-df_1 = itm[itm$Revenue == 1, ]
-idx = sample(1:nrow(df_0), nrow(df_1))
-df_0_sub = df_0[idx, ]
-df_0_re = df_0[-idx, ]
-
-train_index = sample(1:nrow(df_1), nrow(df_1))
-df_0_train = df_0_sub[train_index, ]
-
-df_train = rbind(df_0_train, df_1)
-
-table(df_train$Revenue)
-table(df_test$Revenue)
+df_train = downSample(x = df_train_original[, -ncol(df_train_original)], y = df_train_original$Revenue, yname = "Revenue")
+table(df_train$Revenue) 
 ```
 
-## Over sampling
+### Oversampling
+
 ```{r}
 set.seed(1)
-df_train <- upSample(x = itm[, -ncol(itm)],
-                     y = itm$Revenue) 
-names(df_train)[18]="Revenue"
+df_train = upSample(x = df_train_original[, -ncol(df_train_original)], y = df_train_original$Revenue, yname = "Revenue")
+table(df_train$Revenue) 
+```
+
+### SMOTE
+
+```{r}
+set.seed(1)
+df_train = SMOTE(Revenue ~ ., data  = as.data.frame(df_train_original))
 table(df_train$Revenue)
 ```
 
-## ROSE
+### ROSE
+
 ```{r}
 set.seed(1)
-df_train <- ROSE(Revenue ~., data=itm)$data
-table(df_train$Revenue)
-
-df_train=df_train[!is.na(df_train$Revenue),]
-df_test=df_test[!is.na(df_test$Revenue),]
+df_train <- ROSE(Revenue ~., data=df_train_original)$data
 table(df_train$Revenue)
 ```
 
