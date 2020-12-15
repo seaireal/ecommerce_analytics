@@ -36,7 +36,9 @@ df = read_csv("online_shoppers_intention.csv")
 df = mutate(df, 
             Month = as.factor(Month),
             OperatingSystems = as.factor(OperatingSystems),
-            Browser = as.factor(Browser),
+            Browser = case_when(
+              
+            ),
             Region = as.factor(Region),
             # combine levels with individual occurances less than 100
             TrafficType = case_when(TrafficType == 7 ~ 0,
@@ -395,8 +397,8 @@ rfmod_impgg
 varImpPlot(rfmod)
 ```
 
-# Neural network
-## With nnet: single layer
+# Neural network (single layer)
+## Data preparation
 ```{r}
 # convert categorical features to numeric type
 df_train_c = mutate(df_train, 
@@ -411,6 +413,7 @@ dummies <- dummyVars(~ Month +  VisitorType, data = df_train_c)
 df_train_c_ohe <- as.data.frame(predict(dummies, newdata = df_train_c))
 df_train_c <- cbind(df_train_c[,-c(which(colnames(df_train_c) %in% ohe_feats))],df_train_c_ohe)
 
+#df_train_c[c(which(colnames(df_train_c) != "Revenue"))] = scale(df_train_c[c(which(colnames(df_train_c) != "Revenue"))])
 
 df_test_c = mutate(df_test, 
             OperatingSystems = as.numeric(OperatingSystems),
@@ -423,100 +426,86 @@ ohe_feats = c('Month', 'VisitorType')
 dummies <- dummyVars(~ Month +  VisitorType, data = df_test_c)
 df_test_c_ohe <- as.data.frame(predict(dummies, newdata = df_test_c))
 df_test_c <- cbind(df_test_c[,-c(which(colnames(df_test_c) %in% ohe_feats))],df_test_c_ohe)
-#lapply(df_test_c,class)
 
-x_train = as.matrix(subset(df_train_c, select = -c(Revenue)))
-x_test = as.matrix(subset(df_test_c, select = -c(Revenue)))
+#df_test_c[c(which(colnames(df_train_c) != "Revenue"))] = scale(df_test_c[c(which(colnames(df_train_c) != "Revenue"))])
 
-y_train = df_train_c$Revenue
-y_test = df_test_c$Revenue
+#x_train = as.matrix(subset(df_train_c, select = -c(Revenue)))
+#x_test = as.matrix(subset(df_test_c, select = -c(Revenue)))
+
+#y_train = df_train_c$Revenue
+#y_test = df_test_c$Revenue
+
+#write_csv(df_train_c, "df_train_c.csv")
+#write_csv(df_test_c, "df_test_c.csv")
 ```
 
 ## parameter tuning
+
+### Number of nodes
+
 ```{r}
-lambda=0:15/100
-error.1=array(0,dim=c(16,10))
-for (i in 1:16){
+set.seed(2)
+node_num = c(5, 10, 15, 20, 25)
+error_node = array(0, dim=c(5, 10))
+for(i in 1:5){
+  for(j in 1:10){
+    nn_node = nnet(Revenue ~ ., df_train_c, size = node_num[i], maxit = 100, trace=F)
+    nn_node_pred = predict(nn_node, df_test_c, type="raw")[ ,1]
+    nn_node_pred_label = ifelse(nn_node_pred > 0.5, 1, 0)
+    error_node[i, j] = mean(nn_node_pred_label != df_test_c$Revenue)
+  }
+}
+```
+
+```{r fig.height=5, fig.width=8}
+#jpeg("node_opt.jpeg", res=300)
+plot(as.factor(node_num) , error_node, xlab="Number of Hidden Units", ylab="Test Error")
+#dev.off()
+```
+
+### Number of layers
+
+Please refer to the Python code for this section.
+
+### Weight decay
+
+```{r}
+set.seed(2)
+lambda = c(0.01, 0.05, 0.1, 0.15, 0.2)
+error_decay = array(0,dim=c(5,10))
+for (i in 1:5){
   for (j in 1:10){
-    if (i == 1){
-      model.1.nn=nnet(Revenue ~ ., df_train_c, size = 10, decay = lambda[i], linout = T, skip = F, maxit = 5000, Hess = T, trace=F)}
-    if (i != 1){
-      model.1.nn=nnet(Revenue ~ ., df_train_c, size = 10, decay = lambda[i], linout = T, skip = F, maxit = 2000, Hess = T, trace=F)}
-    error.1[i,j]=sum((predict(model.1.nn,df_test_c)-df_test_c$Revenue)^2)/nrow(df_test_c)
+    nn_decay = nnet(Revenue ~ ., df_train_c, size = 5, decay = lambda[i], maxit = 100, trace=F)
+    nn_decay_pred = predict(nn_decay, df_test_c, type="raw")[ ,1]
+    nn_decay_pred_label = ifelse(nn_decay_pred > 0.5, 1, 0)
+    error_decay[i, j] = mean(nn_decay_pred_label != df_test_c$Revenue)
   }
 }
-plot(as.factor(rep(1:16/100,10)),as.vector(error.1),xlab="Weight Decay Parameter",ylab="Relative Test Error",main="Sum of Sigmoids, 10 Hidden Units Model", labels=lambda)
+```
 
-lambda=0:15/100
-error.1=array(0,dim=c(16,15))
-for (i in 1:16){
-  for (j in 1:15){
-    if (i == 1){
-      model.1.nn=nnet(Revenue ~ ., df_train_c, size = 15, decay = lambda[i], linout = T, skip = F, maxit = 5000, Hess = T, trace=F)}
-    if (i != 1){
-      model.1.nn=nnet(Revenue ~ ., df_train_c, size = 15, decay = lambda[i], linout = T, skip = F, maxit = 2000, Hess = T, trace=F)}
-    error.1[i,j]=sum((predict(model.1.nn,df_test_c)-df_test_c$Revenue)^2)/nrow(df_test_c)
-  }
-}
-plot(as.factor(rep(1:16/100,15)),as.vector(error.1),xlab="Weight Decay Parameter",ylab="Relative Test Error",main="Sum of Sigmoids, 10 Hidden Units Model", labels=lambda)
+```{r fig.height=5, fig.width=8}
 
-lambda=0:15/100
-error.1=array(0,dim=c(16,20))
-for (i in 1:16){
-  for (j in 1:20){
-    if (i == 1){
-      model.1.nn=nnet(Revenue ~ ., df_train_c, size = 20, decay = lambda[i], linout = T, skip = F, maxit = 5000, Hess = T, trace=F)}
-    if (i != 1){
-      model.1.nn=nnet(Revenue ~ ., df_train_c, size = 20, decay = lambda[i], linout = T, skip = F, maxit = 2000, Hess = T, trace=F)}
-    error.1[i,j]=sum((predict(model.1.nn,df_test_c)-df_test_c$Revenue)^2)/nrow(df_test_c)
-  }
-}
-plot(as.factor(rep(1:16/100,20)),as.vector(error.1),xlab="Weight Decay Parameter",ylab="Relative Test Error",main="Sum of Sigmoids, 10 Hidden Units Model", labels=lambda)
+plot(as.factor(lambda) , error_decay, xlab="Lambda", ylab="Test Error")
 
 ```
 
+## Model with optimized parameters
+
 ```{r}
-sensitivity=array(0,dim=c(1,15))
-specificity=array(0,dim=c(1,15))
-auc=array(0,dim=c(1,15))
-error.1=array(0,dim=c(1,15))
-for (j in 1:15){
-  model.1.nn=nnet(Revenue ~ ., df_train_c, size = 15, decay = 0.01, linout = T, skip = F, maxit = 5000, Hess = T, trace=F)
-  model.1.pred=predict(model.1.nn,df_test_c)
+set.seed(1)
+model.1.nn=nnet(Revenue ~ ., df_train_c, size = 5, decay = 0.2, maxit = 100, trace=F)
+model.1.pred=predict(model.1.nn, df_test_c, type="raw")[ ,1]
       
-  yhat = ifelse(model.1.pred > 0.5, 1, 0)
-  sensitivity[,j]=sum(yhat==1 & df_test_c$Revenue==1)/sum(df_test_c$Revenue==1)
-  specificity[,j]=sum(yhat==0 & df_test_c$Revenue==0)/sum(df_test_c$Revenue==0)
-  auc[,j]=roc(df_test_c$Revenue, yhat, levels = c(0, 1), direction = "<") %>% auc()
+model.1.nn.pred.label = ifelse(model.1.pred > 0.5, 1, 0)
 
-  error.1[,j]=mean(df_test_c$Revenue != yhat)
+print("test error rate")
+mean(model.1.nn.pred.label != df_test_c$Revenue)
+print("sensitivity")
+sum(model.1.nn.pred.label==1 & df_test_c$Revenue==1)/sum(df_test_c$Revenue==1)
+print("specificity")
+sum(model.1.nn.pred.label==0 & df_test_c$Revenue==0)/sum(df_test_c$Revenue==0)
 
-}
-plot(as.factor(rep(0.15,15)),as.vector(error.1),xlab="Weight Decay Parameter",ylab="Relative Test Error",main="Sum of Sigmoids, 15 Hidden Units Model", labels=lambda)
-```
-
-```{r}
-mean(error.1)
-mean(sensitivity)
-mean(specificity)
-mean(auc)
-```
-
-```{r}
-model.1.nn=nnet(Revenue ~ ., df_train_c, size = 20, decay = 0.15, linout = T, skip = F, maxit = 5000, Hess = T, trace=F)
-model.1.pred=predict(model.1.nn, df_test_c)
-      
-yhat = ifelse(model.1.pred > 0.5, 1, 0)
-sensitivity=sum(yhat==1 & df_test_c$Revenue==1)/sum(df_test_c$Revenue==1)
-specificity=sum(yhat==0 & df_test_c$Revenue==0)/sum(df_test_c$Revenue==0)
-auc=roc(df_test_c$Revenue, yhat, levels = c(0, 1), direction = "<") %>% auc()
-
-error.1=mean(df_test_c$Revenue != yhat)
-
-error.1
-sensitivity
-specificity
-auc
+roc(df_test_c$Revenue, model.1.pred, levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 ```{r}
@@ -547,6 +536,3 @@ auc
 
 ```
 
-```{r}
-
-```
