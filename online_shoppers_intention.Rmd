@@ -6,7 +6,6 @@ output: word_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-#library(magrittr)
 library(caret) # subsampling
 library(DMwR) # SMOTE sampling
 library(ROSE) # synthetic data generation
@@ -16,15 +15,8 @@ library(pROC) # ROC AUC plot
 library(e1071) # svm
 library(tree)
 library(gbm) # boosting
-#library(xgboost) # XGBoost
 library(randomForest)
-library(glasso)
-#library(igraph) # graph DAG
-#library(deepnet) # NN
 library(nnet) # NN
-#library(tensorflow)
-#library(keras)
-#library(tfdatasets)
 ```
 
 # Data preparation
@@ -200,6 +192,7 @@ roc(test_revenue, lgmod_lasso_pred[,1], levels = c(0, 1), direction = "<") %>% a
 ```
 
 # SVM
+
 ```{r}
 Accuracy = function(model){
   
@@ -215,6 +208,8 @@ both_accuracy = c(training_accuracy, test_accuracy)
 return(both_accuracy)
 }
 ```
+
+## Linear kernel
 
 ```{r}
 # linear kernel SVM
@@ -238,6 +233,7 @@ sum(predicted_svm1==0 & test_revenue==0)/sum(test_revenue==0)
 roc(test_revenue, attributes(predicted_svm1)$probabilities[,2], levels = c(0, 1), direction = "<") %>% auc()
 ```
 
+## Polynomial kernel
 
 ```{r}
 # polynomial kernel SVM
@@ -261,6 +257,8 @@ sum(predicted_svm2==0 & test_revenue==0)/sum(test_revenue==0)
 roc(test_revenue, attributes(predicted_svm2)$probabilities[,2], levels = c(0, 1), direction = "<") %>% auc()
 ```
 
+## Radial kernel
+
 ```{r}
 # radial kernel SVM
 set.seed(3)
@@ -283,78 +281,7 @@ sum(predicted_svm3==0 & test_revenue==0)/sum(test_revenue==0)
 roc(test_revenue, attributes(predicted_svm3)$probabilities[,2], levels = c(0, 1), direction = "<") %>% auc()
 ```
 
-```{r}
-# try a different sampling method
-# linear kernel SVM
-set.seed(3)
-tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = list(cost = c(0.1, 1, 10, 100)))
-
-Accuracy(tune_svm1$best.model)
-
-# polynomial kernel SVM
-tune_svm2 = tune(svm, Revenue~., data = df_train, kernel = "polynomial", ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
-
-Accuracy(tune_svm2$best.model)
-
-# radial kernel SVM
-tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = list(cost = c(0.01, 0.1, 1, 10, 100),  gamma = c(0.1, 0.5, 1, 2,3,4,5)))
-
-Accuracy(tune_svm3$best.model)
-```
-
 Based on the above three SVM models, the radial kernel SVM provides the highest test accuracy of 90.02%
-
-# Graphical lasso: feature selection
-
-```{r}
-S=cov(df[, !sapply(df, is.factor)]) # for columns not character (-Month,-VisitorType)
-dim(S)
-
-fit1=glasso(S,rho=50)
-Theta=fit1$wi
-colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
-rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
-Adj=Theta!=0
-Adj=Adj*1
-diag(Adj)=0
-plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
-
-fit2=glasso(S,rho=20)
-Theta=fit2$wi
-colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
-rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
-Adj=Theta!=0
-Adj=Adj*1
-diag(Adj)=0
-plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
-
-fit3=glasso(S,rho=5)
-Theta=fit3$wi
-colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
-rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
-Adj=Theta!=0
-Adj=Adj*1
-diag(Adj)=0
-plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
-
-fit4=glasso(S,rho=1)
-Theta=fit4$wi
-colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
-rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
-Adj=Theta!=0
-Adj=Adj*1
-diag(Adj)=0
-plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
-
-fit5=glasso(S,rho=100)
-Theta=fit5$wi
-colnames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
-rownames(Theta)=c("Administrative","Administrative_Duration","Informational","Informational_Duration","ProductRelated","ProductRelated_Duration","BounceRates","ExitRates","PageValues","SpecialDay")
-Adj=Theta!=0
-Adj=Adj*1
-diag(Adj)=0
-plot(graph_from_adjacency_matrix(Adj, mode = c("undirected")))
-```
 
 # Trees
 ## Decision Trees
