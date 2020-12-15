@@ -395,11 +395,10 @@ rfmod_impgg
 varImpPlot(rfmod)
 ```
 
-# DNN
+# Neural network
 ## With nnet: single layer
 ```{r}
-# data processing for deepnet package
-# convert features to numeric type
+# convert categorical features to numeric type
 df_train_c = mutate(df_train, 
             OperatingSystems = as.numeric(OperatingSystems),
             Browser = as.numeric(Browser),
@@ -428,12 +427,9 @@ df_test_c <- cbind(df_test_c[,-c(which(colnames(df_test_c) %in% ohe_feats))],df_
 
 x_train = as.matrix(subset(df_train_c, select = -c(Revenue)))
 x_test = as.matrix(subset(df_test_c, select = -c(Revenue)))
-y_train = as.matrix(df_train_c$Revenue)
-y_test = as.matrix(df_test_c$Revenue)
 
-
-y_train=as.numeric(y_train)
-y_test=as.numeric(y_test)
+y_train = df_train_c$Revenue
+y_test = df_test_c$Revenue
 ```
 
 ## parameter tuning
@@ -508,7 +504,7 @@ mean(auc)
 
 ```{r}
 model.1.nn=nnet(Revenue ~ ., df_train_c, size = 20, decay = 0.15, linout = T, skip = F, maxit = 5000, Hess = T, trace=F)
-model.1.pred=predict(model.1.nn,df_test_c)
+model.1.pred=predict(model.1.nn, df_test_c)
       
 yhat = ifelse(model.1.pred > 0.5, 1, 0)
 sensitivity=sum(yhat==1 & df_test_c$Revenue==1)/sum(df_test_c$Revenue==1)
