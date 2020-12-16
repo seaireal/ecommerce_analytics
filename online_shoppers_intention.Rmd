@@ -14,6 +14,7 @@ library(MASS) # lda, qda, stepaic
 library(pROC) # ROC AUC plot
 library(e1071) # svm
 library(tree)
+library(rpart)
 library(gbm) # boosting
 library(randomForest)
 library(nnet) # NN
@@ -84,6 +85,9 @@ sum(df_test$Revenue==1)/nrow(df_test)
 ```
 
 ## Subsampling on training set
+
+Only run one of the following subsampling methods at a time before training models. Downsampling is accessed for all models. Random forest is selected to evaluate all subsampling methods.
+
 ### Downsampling
 
 ```{r}
@@ -127,8 +131,8 @@ lgmod_full_revenue <- ifelse(lgmod_full_pred > 0.5, 1, 0)
 test_revenue = df_test$Revenue
 print("confusion matrix")
 table(lgmod_full_revenue, test_revenue)
-print("test error")
-mean(lgmod_full_revenue != test_revenue)
+print("test accuracy")
+mean(lgmod_full_revenue == test_revenue)
 print("sensitivity")
 sum(lgmod_full_revenue==1 & test_revenue==1)/sum(test_revenue==1)
 print("specificity")
@@ -153,8 +157,8 @@ test_revenue = df_test$Revenue
 
 print("confusion matrix")
 table(lgmod_aic_revenue, test_revenue)
-print("test error")
-mean(lgmod_aic_revenue != test_revenue)
+print("test accuracy")
+mean(lgmod_aic_revenue == test_revenue)
 print("sensitivity")
 sum(lgmod_aic_revenue==1 & test_revenue==1)/sum(test_revenue==1)
 print("specificity")
@@ -184,8 +188,8 @@ lgmod_lasso_revenue <- ifelse(lgmod_lasso_pred > 0.5, 1, 0)
 test_revenue = df_test$Revenue
 print("confusion matrix")
 table(lgmod_lasso_revenue, test_revenue)
-print("test error")
-mean(lgmod_lasso_revenue != test_revenue)
+print("test accuracy")
+mean(lgmod_lasso_revenue == test_revenue)
 print("sensitivity")
 sum(lgmod_lasso_revenue==1 & test_revenue==1)/sum(test_revenue==1)
 print("specificity")
@@ -211,8 +215,8 @@ svm1 = svm(Revenue~., data = df_train, kernel = "linear", cost=1, probability = 
 predicted_svm1 = predict(svm1, df_test, probability = TRUE)
 test_revenue = df_test$Revenue
 
-print("test error")
-mean(predicted_svm1 != test_revenue)
+print("test accuracy")
+mean(predicted_svm1 == test_revenue)
 
 print("sensitivity")
 sum(predicted_svm1==1 & test_revenue==1)/sum(test_revenue==1)
@@ -237,8 +241,8 @@ svm2 = svm(Revenue~., data = df_train, kernel = "polynomial", degree = 3, cost=1
 predicted_svm2 = predict(svm2, df_test, probability = TRUE)
 test_revenue = df_test$Revenue
 
-print("test error")
-mean(predicted_svm2 != test_revenue)
+print("test accuracy")
+mean(predicted_svm2 == test_revenue)
 
 print("sensitivity")
 sum(predicted_svm2==1 & test_revenue==1)/sum(test_revenue==1)
@@ -264,8 +268,8 @@ svm3 = svm(Revenue~., data = df_train, kernel = "radial", gamma = 0.01, cost=10,
 predicted_svm3 = predict(svm3, df_test, probability = TRUE)
 test_revenue = df_test$Revenue
 
-print("test error")
-mean(predicted_svm3 != test_revenue)
+print("test accuracy")
+mean(predicted_svm3 == test_revenue)
 
 print("sensitivity")
 sum(predicted_svm3==1 & test_revenue==1)/sum(test_revenue==1)
@@ -283,25 +287,8 @@ Based on the above three SVM models, the radial kernel SVM provides the highest 
 
 ```{r}
 set.seed(1)
-trmod = tree::tree(Revenue~., df_train)
+trmod = tree(Revenue~., df_train)
 summary(trmod)
-```
-
-```{r}
-trmod_revenue = predict(trmod, df_test, type="class")
-print("confusion matrix")
-table(trmod_revenue, test_revenue)
-print("test error rate")
-mean(trmod_revenue!=test_revenue)
-print("sensitivity")
-sum(trmod_revenue==1 & test_revenue==1)/sum(test_revenue==1)
-print("specificity")
-sum(trmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
-
-# auc
-trmod_pred = predict(trmod, df_test, type="vector")
-roc(test_revenue, trmod_pred[,2], levels = c(0, 1), direction = "<") %>% auc()
-
 ```
 
 ```{r}
@@ -310,9 +297,31 @@ text(trmod, pretty=0)
 ```
 
 ```{r}
-set.seed(2)
+set.seed(1)
 trmod_cv = cv.tree(trmod)
 trmod_cv
+```
+
+```{r}
+set.seed(1)
+trmod_prune = prune.tree(trmod, best = 5)
+summary(trmod_prune)
+```
+
+```{r}
+trmod_revenue = predict(trmod_prune, df_test, type="class")
+print("confusion matrix")
+table(trmod_revenue, test_revenue)
+print("test accuracy")
+mean(trmod_revenue==test_revenue)
+print("sensitivity")
+sum(trmod_revenue==1 & test_revenue==1)/sum(test_revenue==1)
+print("specificity")
+sum(trmod_revenue==0 & test_revenue==0)/sum(test_revenue==0)
+
+# auc
+trmod_pred = predict(trmod, df_test, type="vector")
+roc(test_revenue, trmod_pred[,2], levels = c(0, 1), direction = "<") %>% auc()
 ```
 
 ## Gradient boosting
@@ -339,8 +348,8 @@ bmod_pred = predict(bmod, newdata=df_test_b, n.trees=5000, type="response")
 bmod_revenue = ifelse(bmod_pred > 0.5, 1, 0)
 print("confusion matrix")
 table(bmod_revenue, test_revenue)
-print("test error rate")
-mean(bmod_revenue!=test_revenue)
+print("test accuracy")
+mean(bmod_revenue==test_revenue)
 print("sensitivity")
 sum(bmod_revenue==1 & test_revenue==1)/sum(test_revenue==1)
 print("specificity")
@@ -360,8 +369,8 @@ test_revenue = df_test$Revenue
 rfmod_revenue = predict(rfmod, newdata=df_test, type="response")
 print("confusion matrix")
 table(rfmod_revenue, test_revenue)
-print("test error rate")
-mean(rfmod_revenue!=test_revenue)
+print("test accuracy")
+mean(rfmod_revenue==test_revenue)
 print("sensitivity")
 sum(rfmod_revenue==1 & test_revenue==1)/sum(test_revenue==1)
 print("specificity")
@@ -439,20 +448,20 @@ df_test_c <- cbind(df_test_c[,-c(which(colnames(df_test_c) %in% ohe_feats))],df_
 ```{r}
 set.seed(2)
 node_num = c(5, 10, 15, 20, 25)
-error_node = array(0, dim=c(5, 10))
+node_accuracy = array(0, dim=c(5, 10))
 for(i in 1:5){
   for(j in 1:10){
     nn_node = nnet(Revenue ~ ., df_train_c, size = node_num[i], maxit = 100, trace=F)
     nn_node_pred = predict(nn_node, df_test_c, type="raw")[ ,1]
     nn_node_pred_label = ifelse(nn_node_pred > 0.5, 1, 0)
-    error_node[i, j] = mean(nn_node_pred_label != df_test_c$Revenue)
+    node_accuracy[i, j] = mean(nn_node_pred_label == df_test_c$Revenue)
   }
 }
 ```
 
 ```{r fig.height=5, fig.width=8}
 #jpeg("node_opt.jpeg", res=300)
-plot(as.factor(node_num) , error_node, xlab="Number of Hidden Units", ylab="Test Error")
+plot(as.factor(node_num) , node_accuracy, xlab="Number of Hidden Units", ylab="Test Accuracy")
 #dev.off()
 ```
 
@@ -465,20 +474,20 @@ Please refer to the Python code for this section.
 ```{r}
 set.seed(2)
 lambda = c(0, 0.05, 0.1, 0.15, 0.2)
-error_decay = array(0,dim=c(5,10))
+decay_accuracy = array(0,dim=c(5,10))
 for (i in 1:5){
   for (j in 1:10){
     nn_decay = nnet(Revenue ~ ., df_train_c, size = 5, decay = lambda[i], maxit = 100, trace=F)
     nn_decay_pred = predict(nn_decay, df_test_c, type="raw")[ ,1]
     nn_decay_pred_label = ifelse(nn_decay_pred > 0.5, 1, 0)
-    error_decay[i, j] = mean(nn_decay_pred_label != df_test_c$Revenue)
+    decay_accuracy[i, j] = mean(nn_decay_pred_label == df_test_c$Revenue)
   }
 }
 ```
 
 ```{r fig.height=5, fig.width=8}
 
-plot(as.factor(lambda) , error_decay, xlab="Lambda", ylab="Test Error")
+plot(as.factor(lambda) , decay_accuracy, xlab="Lambda", ylab="Test Accuracy")
 
 ```
 
@@ -486,17 +495,17 @@ plot(as.factor(lambda) , error_decay, xlab="Lambda", ylab="Test Error")
 
 ```{r}
 set.seed(1)
-model.1.nn=nnet(Revenue ~ ., df_train_c, size = 5, decay = 0, maxit = 100, trace=F)
-model.1.pred=predict(model.1.nn, df_test_c, type="raw")[ ,1]
+nn_1_opt=nnet(Revenue ~ ., df_train_c, size = 5, decay = 0, maxit = 100, trace=F)
+model.1.pred=predict(nn_1_opt, df_test_c, type="raw")[ ,1]
       
-model.1.nn.pred.label = ifelse(model.1.pred > 0.5, 1, 0)
+nn_1_opt.pred.label = ifelse(model.1.pred > 0.5, 1, 0)
 
-print("test error rate")
-mean(model.1.nn.pred.label != df_test_c$Revenue)
+print("test accuracy")
+mean(nn_1_opt.pred.label == df_test_c$Revenue)
 print("sensitivity")
-sum(model.1.nn.pred.label==1 & df_test_c$Revenue==1)/sum(df_test_c$Revenue==1)
+sum(nn_1_opt.pred.label==1 & df_test_c$Revenue==1)/sum(df_test_c$Revenue==1)
 print("specificity")
-sum(model.1.nn.pred.label==0 & df_test_c$Revenue==0)/sum(df_test_c$Revenue==0)
+sum(nn_1_opt.pred.label==0 & df_test_c$Revenue==0)/sum(df_test_c$Revenue==0)
 
 roc(df_test_c$Revenue, model.1.pred, levels = c(0, 1), direction = "<") %>% auc()
 ```
