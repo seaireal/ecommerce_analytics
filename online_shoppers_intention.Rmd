@@ -35,10 +35,11 @@ df = read_csv("online_shoppers_intention.csv")
 
 df = mutate(df, 
             Month = as.factor(Month),
-            OperatingSystems = as.factor(OperatingSystems),
-            Browser = case_when(
-              
-            ),
+            OperatingSystems = case_when(OperatingSystems > 3 ~ 0,
+                                         TRUE ~ OperatingSystems) %>% as.factor(),
+            Browser = case_when(Browser == 3 ~ 0,
+                                Browser > 5 ~ 0,
+                                TRUE ~ Browser) %>% as.factor(),
             Region = as.factor(Region),
             # combine levels with individual occurances less than 100
             TrafficType = case_when(TrafficType == 7 ~ 0,
@@ -51,7 +52,8 @@ df = mutate(df,
                                     TrafficType == 18 ~ 0,
                                     TrafficType == 19 ~ 0,
                                     TRUE ~ TrafficType) %>% as.factor(),
-            VisitorType = as.factor(VisitorType),
+            VisitorType = case_when(VisitorType != "Returning_Visitor" ~ "New_Visitor",
+                                    TRUE ~ VisitorType) %>% as.factor(),
             Weekend = as.factor(Weekend),
             Revenue = case_when(Revenue == TRUE ~ 1,
                                 Revenue == FALSE ~ 0) %>% as.factor())
@@ -195,32 +197,18 @@ roc(test_revenue, lgmod_lasso_pred[,1], levels = c(0, 1), direction = "<") %>% a
 
 # SVM
 
-```{r}
-Accuracy = function(model){
-  
-predicted.train = predict(model, df_train)
-predicted.test = predict(model, df_test)
-
-training_accuracy = sum(predicted.train == df_train$Revenue)/length(df_train$Revenue)
-
-test_accuracy = sum(predicted.test == df_test$Revenue)/length(df_test$Revenue)
-
-both_accuracy = c(training_accuracy, test_accuracy)
-
-return(both_accuracy)
-}
-```
-
 ## Linear kernel
+
+Tuning returns the optimum cost as 1.
 
 ```{r}
 # linear kernel SVM
-set.seed(3)
-tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = list(cost = c(0.1, 1, 10, 100), probability = TRUE))
-
-summary(tune_svm1)
-
-predicted_svm1 = predict(tune_svm1$best.model, df_test, probability = TRUE)
+set.seed(1)
+#tune_svm1 = tune(svm, Revenue~., data = df_train, kernel = "linear", ranges = list(cost = c(0.1, 1, 10, 100), probability = TRUE))
+#summary(tune_svm1)
+svm1 = svm(Revenue~., data = df_train, kernel = "linear", cost=1, probability = TRUE)
+           
+predicted_svm1 = predict(svm1, df_test, probability = TRUE)
 test_revenue = df_test$Revenue
 
 print("test error")
@@ -237,14 +225,16 @@ roc(test_revenue, attributes(predicted_svm1)$probabilities[,2], levels = c(0, 1)
 
 ## Polynomial kernel
 
+Tuning returns the optimum cost as 100.
+
 ```{r}
 # polynomial kernel SVM
-set.seed(3)
-tune_svm2 = tune(svm, Revenue~., data = df_train, kernel = "polynomial", ranges = list(cost = c(1, 10, 100, 1000), probability = TRUE))
+set.seed(1)
+#tune_svm2 = tune(svm, Revenue~., data = df_train, kernel = "polynomial", ranges = list(cost = c(1, 10, 100, 1000), probability = TRUE))
+#summary(tune_svm2)
+svm2 = svm(Revenue~., data = df_train, kernel = "polynomial", degree = 3, cost=100, probability = TRUE)
 
-summary(tune_svm2)
-
-predicted_svm2 = predict(tune_svm2$best.model, df_test, probability = TRUE)
+predicted_svm2 = predict(svm2, df_test, probability = TRUE)
 test_revenue = df_test$Revenue
 
 print("test error")
@@ -261,14 +251,17 @@ roc(test_revenue, attributes(predicted_svm2)$probabilities[,2], levels = c(0, 1)
 
 ## Radial kernel
 
+Tuning returns the optimum cost as 10 and gamma as 0.01.
+
 ```{r}
 # radial kernel SVM
-set.seed(3)
-tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = list(cost = c(0.1, 1, 10, 100),  gamma = c(0.001, 0.01, 0.1, 1), probability = TRUE))
+set.seed(1)
+#tune_svm3 = tune(svm, Revenue~., data = df_train, kernel = "radial", ranges = list(cost = c(0.1, 1, 10, 100),  gamma = c(0.001, 0.01, 0.1, 1), probability = TRUE))
+#summary(tune_svm3)
 
-summary(tune_svm3)
+svm3 = svm(Revenue~., data = df_train, kernel = "radial", gamma = 0.01, cost=10, probability = TRUE)
 
-predicted_svm3 = predict(tune_svm3$best.model, df_test, probability = TRUE)
+predicted_svm3 = predict(svm3, df_test, probability = TRUE)
 test_revenue = df_test$Revenue
 
 print("test error")
@@ -317,7 +310,7 @@ text(trmod, pretty=0)
 ```
 
 ```{r}
-set.seed(1)
+set.seed(2)
 trmod_cv = cv.tree(trmod)
 trmod_cv
 ```
@@ -439,7 +432,7 @@ df_test_c <- cbind(df_test_c[,-c(which(colnames(df_test_c) %in% ohe_feats))],df_
 #write_csv(df_test_c, "df_test_c.csv")
 ```
 
-## parameter tuning
+## Parameter tuning
 
 ### Number of nodes
 
@@ -471,7 +464,7 @@ Please refer to the Python code for this section.
 
 ```{r}
 set.seed(2)
-lambda = c(0.01, 0.05, 0.1, 0.15, 0.2)
+lambda = c(0, 0.05, 0.1, 0.15, 0.2)
 error_decay = array(0,dim=c(5,10))
 for (i in 1:5){
   for (j in 1:10){
@@ -493,7 +486,7 @@ plot(as.factor(lambda) , error_decay, xlab="Lambda", ylab="Test Error")
 
 ```{r}
 set.seed(1)
-model.1.nn=nnet(Revenue ~ ., df_train_c, size = 5, decay = 0.2, maxit = 100, trace=F)
+model.1.nn=nnet(Revenue ~ ., df_train_c, size = 5, decay = 0, maxit = 100, trace=F)
 model.1.pred=predict(model.1.nn, df_test_c, type="raw")[ ,1]
       
 model.1.nn.pred.label = ifelse(model.1.pred > 0.5, 1, 0)
@@ -507,32 +500,3 @@ sum(model.1.nn.pred.label==0 & df_test_c$Revenue==0)/sum(df_test_c$Revenue==0)
 
 roc(df_test_c$Revenue, model.1.pred, levels = c(0, 1), direction = "<") %>% auc()
 ```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
