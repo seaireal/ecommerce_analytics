@@ -115,7 +115,7 @@ table(df_train$Revenue)
 ### ROSE
 
 ```{r}
-set.seed(1)
+set.seed(10)
 df_train <- ROSE(Revenue ~., data=df_train_original)$data
 table(df_train$Revenue)
 ```
